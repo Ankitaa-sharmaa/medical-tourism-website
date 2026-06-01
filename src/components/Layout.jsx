@@ -7,7 +7,7 @@ const Layout = ({ children }) => {
   const { pathname } = useLocation();
 
   return (
-    <div className="bg-[#020d1a] text-white overflow-x-hidden">
+    <div className="bg-white text-slate-900 overflow-x-hidden">
       <SharedNavbar />
       <main key={pathname} className="page-enter">
         {children}

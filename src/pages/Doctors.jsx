@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import AOS from "aos";
 import { FaArrowRight, FaStar, FaClock, FaGlobe, FaUserMd } from "react-icons/fa";
 import AnimatedCounter from "../components/AnimatedCounter";
+import heroPng from "../assets/images/hero.png";
 
 const ALL_DOCTORS = [
   {
@@ -19,7 +20,7 @@ const ALL_DOCTORS = [
     available: true,
   },
   {
-    img: "https://images.unsplash.com/photo-1612277795421-9bc7706a4a41?q=80&w=600&auto=format&fit=crop",
+    img: heroPng,
     name: "Dr. Michael Lee",
     role: "Consultant Neurologist",
     specialty: "Neurology",

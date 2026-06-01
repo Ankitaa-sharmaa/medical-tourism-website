@@ -83,8 +83,10 @@ const INITIAL_FORM = {
 };
 
 const Contact = () => {
-  const [form, setForm] = useState(INITIAL_FORM);
+  const [form,      setForm]      = useState(INITIAL_FORM);
   const [submitted, setSubmitted] = useState(false);
+  const [saving,    setSaving]    = useState(false);
+  const [error,     setError]     = useState("");
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -92,7 +94,25 @@ const Contact = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setSubmitted(true);
+    setSaving(true);
+    setError("");
+
+    // Save to localStorage → visible in Admin → Contact Queries
+    try {
+      const existing = JSON.parse(localStorage.getItem("admin_queries") || "[]");
+      const newQuery = {
+        ...form,
+        id: `admin_queries_${Date.now()}`,
+        status: "new",
+        createdAt: new Date().toISOString(),
+      };
+      localStorage.setItem("admin_queries", JSON.stringify([newQuery, ...existing]));
+      setSubmitted(true);
+    } catch (err) {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -151,6 +171,12 @@ const Contact = () => {
 
             {!submitted ? (
               <form onSubmit={handleSubmit} className="space-y-5">
+                {error && (
+                  <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
+                    {error}
+                  </div>
+                )}
+
                 <div className="grid sm:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
@@ -254,9 +280,17 @@ const Contact = () => {
 
                 <button
                   type="submit"
-                  className="bg-cyan-500 hover:bg-cyan-400 text-white px-10 py-4 rounded-full font-bold text-sm flex items-center gap-2 transition-all hover:scale-105 hover:shadow-lg hover:shadow-cyan-400/25"
+                  disabled={saving}
+                  className="bg-cyan-500 hover:bg-cyan-400 disabled:opacity-70 text-white px-10 py-4 rounded-full font-bold text-sm flex items-center gap-2 transition-all hover:scale-105 hover:shadow-lg hover:shadow-cyan-400/25"
                 >
-                  Send Message <FaArrowRight className="text-xs" />
+                  {saving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Sending…
+                    </>
+                  ) : (
+                    <>Send Message <FaArrowRight className="text-xs" /></>
+                  )}
                 </button>
 
                 <p className="text-slate-400 text-xs">

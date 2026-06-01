@@ -66,7 +66,7 @@ const SharedNavbar = () => {
             to="/contact"
             className="hidden md:inline-flex items-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-white px-5 py-2.5 rounded-full font-bold text-sm transition-all hover:scale-105 hover:shadow-lg hover:shadow-cyan-400/30"
           >
-            Book Consult <FaArrowRight className="text-xs" />
+            Book Consultation <FaArrowRight className="text-xs" />
           </Link>
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -101,7 +101,7 @@ const SharedNavbar = () => {
             to="/contact"
             className="inline-flex items-center gap-2 bg-cyan-500 text-white px-6 py-3 rounded-full font-bold text-sm mt-2"
           >
-            Book Free Consult <FaArrowRight />
+            Book Free Consultation <FaArrowRight />
           </Link>
         </div>
       )}
