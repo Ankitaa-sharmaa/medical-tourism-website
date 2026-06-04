@@ -3,21 +3,34 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-const {
-  VITE_FIREBASE_API_KEY:             apiKey,
-  VITE_FIREBASE_AUTH_DOMAIN:         authDomain,
-  VITE_FIREBASE_PROJECT_ID:          projectId,
-  VITE_FIREBASE_STORAGE_BUCKET:      storageBucket,
-  VITE_FIREBASE_MESSAGING_SENDER_ID: messagingSenderId,
-  VITE_FIREBASE_APP_ID:              appId,
-} = import.meta.env;
+// .trim() on every value — copy-pasting into Vercel often adds
+// leading/trailing whitespace which causes auth/api-key-not-valid
+const apiKey            = (import.meta.env.VITE_FIREBASE_API_KEY            || '').trim();
+const authDomain        = (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN        || '').trim();
+const projectId         = (import.meta.env.VITE_FIREBASE_PROJECT_ID         || '').trim();
+const storageBucket     = (import.meta.env.VITE_FIREBASE_STORAGE_BUCKET     || '').trim();
+const messagingSenderId = (import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID|| '').trim();
+const appId             = (import.meta.env.VITE_FIREBASE_APP_ID             || '').trim();
+
+// Helper: show first 8 + last 4 chars so you can verify in Vercel logs
+// without exposing the full key
+const mask = (v) => v ? `${v.slice(0, 8)}…${v.slice(-4)}` : '❌ MISSING';
 
 const isConfigured =
-  apiKey &&
-  apiKey !== 'your_api_key_here' &&
-  authDomain &&
-  projectId &&
-  appId;
+  apiKey && apiKey !== 'your_api_key_here' &&
+  authDomain && projectId && appId;
+
+// Always log so you can open DevTools / Vercel Function Logs and confirm
+console.log(
+  '[MedTour] Firebase env check\n',
+  ` VITE_FIREBASE_API_KEY:            ${mask(apiKey)}\n`,
+  ` VITE_FIREBASE_AUTH_DOMAIN:        ${mask(authDomain)}\n`,
+  ` VITE_FIREBASE_PROJECT_ID:         ${mask(projectId)}\n`,
+  ` VITE_FIREBASE_STORAGE_BUCKET:     ${mask(storageBucket)}\n`,
+  ` VITE_FIREBASE_MESSAGING_SENDER_ID:${mask(messagingSenderId)}\n`,
+  ` VITE_FIREBASE_APP_ID:             ${mask(appId)}\n`,
+  ` isConfigured: ${isConfigured}`
+);
 
 let app     = null;
 let auth    = null;
@@ -40,8 +53,8 @@ if (isConfigured) {
   }
 } else {
   console.warn(
-    '[MedTour] Firebase env vars missing or placeholder. ' +
-    'Admin login requires real VITE_FIREBASE_* values in .env'
+    '[MedTour] Firebase NOT initialised — one or more VITE_FIREBASE_* ' +
+    'env vars are missing. Set them in Vercel → Settings → Environment Variables.'
   );
 }
 
