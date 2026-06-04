@@ -13,20 +13,30 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // auth is null when Firebase isn't configured — skip listener, stay logged out
     if (!auth) {
       setLoading(false);
       return;
     }
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setLoading(false);
-    });
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (firebaseUser) => {
+        setUser(firebaseUser);
+        setLoading(false);
+      },
+      (err) => {
+        // onAuthStateChanged observer error (e.g. network issue)
+        console.error('[MedTour Auth] state observer error:', err.code, err.message);
+        setLoading(false);
+      }
+    );
     return unsubscribe;
   }, []);
 
-  const signIn = (email, password) => {
-    if (!auth) return Promise.reject(new Error('Firebase is not configured. Check your .env file.'));
+  const signIn = async (email, password) => {
+    if (!auth) {
+      throw new Error('Firebase is not configured. Add VITE_FIREBASE_* keys to your .env file.');
+    }
+    // Let the raw Firebase error propagate — AdminLogin maps error codes to messages
     return signInWithEmailAndPassword(auth, email, password);
   };
 
@@ -44,6 +54,6 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
+  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
   return ctx;
 };
