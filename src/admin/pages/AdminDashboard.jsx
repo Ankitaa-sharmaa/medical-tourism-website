@@ -102,9 +102,9 @@ const AdminDashboard = () => {
             <div className="divide-y divide-slate-100">
               {recentAppts.map(a => (
                 <div key={a.id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50 transition">
-                  <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-sm uppercase flex-shrink-0">{a.name?.[0]??'?'}</div>
+                  <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-sm uppercase flex-shrink-0">{(a.fullName||a.name||'?')[0].toUpperCase()}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-slate-900 truncate">{a.name}</p>
+                    <p className="font-semibold text-sm text-slate-900 truncate">{a.fullName||a.name}</p>
                     <p className="text-xs text-slate-400 truncate">{a.service||'—'} · {formatDate(a.createdAt)}</p>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${STATUS_STYLE[a.status]??STATUS_STYLE.pending}`}>{a.status??'pending'}</span>

@@ -100,21 +100,19 @@ const Contact = () => {
     setError("");
 
     try {
-      if (db) {
-        // Save to Firestore 'appointments' collection → visible in Admin Appointments page
-        await addDoc(collection(db, "appointments"), {
-          ...form,
-          status: "pending",
-          createdAt: serverTimestamp(),
-        });
-      } else {
-        // Fallback to localStorage when Firebase is not configured (local dev)
-        const existing = JSON.parse(localStorage.getItem("admin_queries") || "[]");
-        localStorage.setItem("admin_queries", JSON.stringify([
-          { ...form, id: `qry_${Date.now()}`, status: "new", createdAt: new Date().toISOString() },
-          ...existing,
-        ]));
+      if (!db) {
+        throw new Error("Firebase is not configured. Please contact us directly.");
       }
+      await addDoc(collection(db, "appointments"), {
+        fullName: form.name.trim(),
+        email:    form.email.trim(),
+        phone:    form.phone.trim(),
+        country:  form.country,
+        service:  form.service,
+        message:  form.message.trim(),
+        status:   "pending",
+        createdAt: serverTimestamp(),
+      });
       setSubmitted(true);
     } catch (err) {
       console.error("Contact form save error:", err);

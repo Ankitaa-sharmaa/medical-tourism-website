@@ -19,7 +19,7 @@ const STATUS_STYLE = {
   rejected: 'bg-red-100 text-red-600 border border-red-200',
 };
 
-const EMPTY = { name:'', email:'', phone:'', country:'', service:'', notes:'' };
+const EMPTY = { fullName:'', email:'', phone:'', country:'', service:'', message:'' };
 
 const formatDate = iso => {
   if (!iso) return '—';
@@ -61,8 +61,17 @@ const AdminAppointments = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      await addDoc(collection(db, 'appointments'), { ...form, status: 'pending', createdAt: serverTimestamp() });
-      toast('success', `Appointment for ${form.name} added.`);
+      await addDoc(collection(db, 'appointments'), {
+        fullName: form.fullName.trim(),
+        email:    form.email.trim(),
+        phone:    form.phone.trim(),
+        country:  form.country,
+        service:  form.service,
+        message:  form.message.trim(),
+        status:   'pending',
+        createdAt: serverTimestamp(),
+      });
+      toast('success', `Appointment for ${form.fullName} added.`);
       setModal(null); setForm(EMPTY);
     } catch (err) { toast('error', err.message); }
     finally { setSaving(false); }
@@ -97,7 +106,8 @@ const AdminAppointments = () => {
   };
 
   const filtered = appts.filter(a => {
-    const s = [a.name, a.email, a.service].some(v => v?.toLowerCase().includes(search.toLowerCase()));
+    const name = a.fullName || a.name || '';
+    const s = [name, a.email, a.service].some(v => v?.toLowerCase().includes(search.toLowerCase()));
     const st = statusFilter==='all' || a.status===statusFilter;
     return s && st;
   });
@@ -165,7 +175,7 @@ const AdminAppointments = () => {
                 {filtered.map((a,i)=>(
                   <tr key={a.id} className={`border-b border-slate-100 hover:bg-slate-50/70 transition-colors ${i%2===1?'bg-slate-50/30':''}`}>
                     <td className="px-5 py-4">
-                      <p className="font-semibold text-slate-900">{a.name}</p>
+                      <p className="font-semibold text-slate-900">{a.fullName || a.name}</p>
                       <p className="text-xs text-slate-400">{a.email}</p>
                     </td>
                     <td className="px-5 py-4 text-slate-600">{a.service||'—'}</td>
@@ -179,7 +189,7 @@ const AdminAppointments = () => {
                         <button onClick={()=>{setSelected(a);setModal('view');}} className="p-2 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-xl transition"><FaEye className="text-sm"/></button>
                         {a.status!=='approved'&&<button onClick={()=>updateStatus(a.id,'approved')} className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition"><FaCheckCircle className="text-sm"/></button>}
                         {a.status!=='rejected'&&<button onClick={()=>updateStatus(a.id,'rejected')} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition"><FaBan className="text-sm"/></button>}
-                        <button onClick={()=>handleDelete(a.id,a.name)} disabled={deletingId===a.id} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition disabled:opacity-50">
+                        <button onClick={()=>handleDelete(a.id,a.fullName||a.name)} disabled={deletingId===a.id} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition disabled:opacity-50">
                           {deletingId===a.id?<FaSpinner className="text-sm animate-spin"/>:<FaTrash className="text-sm"/>}
                         </button>
                       </div>
@@ -209,7 +219,7 @@ const AdminAppointments = () => {
               <button onClick={()=>setModal(null)} className="p-2 hover:bg-slate-100 rounded-xl"><FaTimes className="text-slate-500"/></button>
             </div>
             <form onSubmit={handleAdd} className="px-7 py-6 space-y-4">
-              {[['Full Name *','name','text','John Smith',true],['Email *','email','email','john@email.com',true],['Phone','phone','tel','+1 555 000 0000',false]].map(([lb,k,type,ph,req])=>(
+              {[['Full Name *','fullName','text','John Smith',true],['Email *','email','email','john@email.com',true],['Phone','phone','tel','+1 555 000 0000',false]].map(([lb,k,type,ph,req])=>(
                 <div key={k}>
                   <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">{lb}</label>
                   <input type={type} required={req} value={form[k]} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} placeholder={ph}
@@ -229,8 +239,8 @@ const AdminAppointments = () => {
                 ))}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Notes</label>
-                <textarea rows={3} value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Additional notes…"
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Message / Notes</label>
+                <textarea rows={3} value={form.message} onChange={e=>setForm(p=>({...p,message:e.target.value}))} placeholder="Patient's message or additional notes…"
                   className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-cyan-400 bg-white resize-none transition"/>
               </div>
               <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
@@ -254,10 +264,16 @@ const AdminAppointments = () => {
             </div>
             <div className="px-7 py-6 space-y-4">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-lg uppercase">{selected.name?.[0]??'?'}</div>
-                <div><p className="font-bold text-slate-900 text-lg">{selected.name}</p><p className="text-slate-500 text-sm">{selected.email}</p></div>
+                <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-lg uppercase">{(selected.fullName||selected.name||'?')[0].toUpperCase()}</div>
+                <div><p className="font-bold text-slate-900 text-lg">{selected.fullName||selected.name}</p><p className="text-slate-500 text-sm">{selected.email}</p></div>
               </div>
-              {[['Phone',selected.phone||'—'],['Country',selected.country||'—'],['Service',selected.service||'—'],['Date',formatDate(selected.createdAt)],['Notes',selected.notes||'—']].map(([lb,val])=>(
+              {[
+                ['Phone',   selected.phone||'—'],
+                ['Country', selected.country||'—'],
+                ['Service', selected.service||'—'],
+                ['Date',    formatDate(selected.createdAt)],
+                ['Message', selected.message || selected.notes || '—'],
+              ].map(([lb,val])=>(
                 <div key={lb} className="flex justify-between items-start gap-4">
                   <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-0.5 w-16 flex-shrink-0">{lb}</span>
                   <span className="text-sm text-slate-700 text-right">{val}</span>
@@ -268,7 +284,7 @@ const AdminAppointments = () => {
                 <div className="flex gap-2">
                   {selected.status!=='approved'&&<button onClick={()=>updateStatus(selected.id,'approved')} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-bold transition">Approve</button>}
                   {selected.status!=='rejected'&&<button onClick={()=>updateStatus(selected.id,'rejected')} className="px-4 py-2 bg-red-500 hover:bg-red-400 text-white rounded-xl text-xs font-bold transition">Reject</button>}
-                  <button onClick={()=>handleDelete(selected.id,selected.name)} className="px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-xl text-xs font-bold transition">Delete</button>
+                  <button onClick={()=>handleDelete(selected.id,selected.fullName||selected.name)} className="px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-xl text-xs font-bold transition">Delete</button>
                 </div>
               </div>
             </div>
