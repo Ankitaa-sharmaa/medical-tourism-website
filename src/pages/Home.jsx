@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import AnimatedCounter from "../components/AnimatedCounter";
+import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { db } from "../admin/firebase/config";
 import {
   FaArrowRight,
   FaHeartbeat,
@@ -70,34 +72,11 @@ const SERVICES = [
   },
 ];
 
-const DOCTORS = [
-  {
-    img: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=600&auto=format&fit=crop",
-    name: "Dr. Sarah Johnson",
-    role: "Senior Cardiologist",
-    exp: "18 Yrs Exp.",
-    rating: 4.9,
-    reviews: 342,
-    available: true,
-  },
-  {
-    img: "https://images.unsplash.com/photo-1612277795421-9bc7706a4a41?q=80&w=600&auto=format&fit=crop",
-    name: "Dr. Michael Lee",
-    role: "Neurologist",
-    exp: "14 Yrs Exp.",
-    rating: 4.8,
-    reviews: 218,
-    available: true,
-  },
-  {
-    img: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?q=80&w=600&auto=format&fit=crop",
-    name: "Dr. Emily Davis",
-    role: "Orthopedic Surgeon",
-    exp: "12 Yrs Exp.",
-    rating: 4.9,
-    reviews: 287,
-    available: false,
-  },
+// Static fallback — shown while Firestore loads or if not configured
+const FALLBACK_DOCTORS = [
+  { id:"s1", image:"https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=600&auto=format&fit=crop", name:"Dr. Sarah Johnson", role:"Senior Cardiologist",  exp:"18 Yrs Exp.", rating:4.9, available:true  },
+  { id:"s2", image:"https://images.unsplash.com/photo-1568602471122-7832951cc4c5?q=80&w=600&auto=format&fit=crop", name:"Dr. Michael Lee",   role:"Neurologist",           exp:"14 Yrs Exp.", rating:4.8, available:true  },
+  { id:"s3", image:"https://images.unsplash.com/photo-1594824476967-48c8b964273f?q=80&w=600&auto=format&fit=crop", name:"Dr. Emily Davis",   role:"Orthopedic Surgeon",    exp:"12 Yrs Exp.", rating:4.9, available:false },
 ];
 
 const FAQS = [
@@ -175,7 +154,24 @@ const STEPS = [
 ];
 
 const Home = () => {
-  const [openFaq, setOpenFaq] = useState(null);
+  const [openFaq,  setOpenFaq]  = useState(null);
+  const [doctors,  setDoctors]  = useState(FALLBACK_DOCTORS);
+  const [docLoading, setDocLoading] = useState(true);
+
+  // Fetch live doctors from Firestore (first 3)
+  useEffect(() => {
+    if (!db) { setDocLoading(false); return; }
+    const q = query(collection(db, "doctors"), orderBy("createdAt", "desc"), limit(3));
+    const unsub = onSnapshot(q,
+      snap => {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setDoctors(list.length > 0 ? list : FALLBACK_DOCTORS);
+        setDocLoading(false);
+      },
+      err => { console.error(err); setDocLoading(false); }
+    );
+    return unsub;
+  }, []);
 
   return (
     <>
@@ -395,52 +391,65 @@ const Home = () => {
         </div>
 
         <div className="grid md:grid-cols-3 gap-7">
-          {DOCTORS.map((doc, i) => (
-            <div
-              key={i}
-              className="bg-white border border-slate-200 rounded-3xl overflow-hidden hover:-translate-y-2 hover:shadow-xl transition-all duration-300 shadow-sm"
-              data-aos="fade-up"
-              data-aos-delay={i * 100}
-            >
-              <div className="relative">
-                <img
-                  src={doc.img}
-                  alt={doc.name}
-                  className="h-64 w-full object-cover object-top"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent" />
-                <div
-                  className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm ${
-                    doc.available
-                      ? "bg-emerald-400/20 text-emerald-200 border border-emerald-400/30"
-                      : "bg-red-400/20 text-red-200 border border-red-400/30"
-                  }`}
-                >
-                  {doc.available ? "● Available" : "● Booked"}
+          {docLoading ? (
+            [1, 2, 3].map(i => (
+              <div key={i} className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm animate-pulse">
+                <div className="h-64 bg-slate-200 w-full" />
+                <div className="p-6 space-y-3">
+                  <div className="h-5 w-36 bg-slate-200 rounded" />
+                  <div className="h-3.5 w-24 bg-slate-100 rounded" />
+                  <div className="h-10 w-full bg-slate-100 rounded-xl mt-4" />
                 </div>
               </div>
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-slate-900">{doc.name}</h3>
-                <p className="text-cyan-600 text-sm mt-1">{doc.role}</p>
-                <div className="flex items-center justify-between mt-4">
-                  <div className="flex items-center gap-1.5">
-                    <FaStar className="text-yellow-400 text-xs" />
-                    <span className="text-sm font-bold text-slate-900">{doc.rating}</span>
-                    <span className="text-slate-400 text-xs">({doc.reviews})</span>
+            ))
+          ) : (
+            doctors.map((doc, i) => (
+              <div
+                key={doc.id || i}
+                className="bg-white border border-slate-200 rounded-3xl overflow-hidden hover:-translate-y-2 hover:shadow-xl transition-all duration-300 shadow-sm"
+                data-aos="fade-up"
+                data-aos-delay={i * 100}
+              >
+                <div className="relative">
+                  <img
+                    src={doc.image || doc.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(doc.name)}&background=e0f2fe&color=0369a1&size=400`}
+                    alt={doc.name}
+                    className="h-64 w-full object-cover object-top"
+                    onError={e => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(doc.name)}&background=e0f2fe&color=0369a1&size=400`; }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent" />
+                  <div
+                    className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm ${
+                      doc.available
+                        ? "bg-emerald-400/20 text-emerald-200 border border-emerald-400/30"
+                        : "bg-red-400/20 text-red-200 border border-red-400/30"
+                    }`}
+                  >
+                    {doc.available ? "● Available" : "● Booked"}
                   </div>
-                  <span className="text-slate-400 text-xs flex items-center gap-1">
-                    <FaClock className="text-slate-400 text-[10px]" /> {doc.exp}
-                  </span>
                 </div>
-                <Link
-                  to="/contact"
-                  className="mt-5 block text-center w-full bg-cyan-50 hover:bg-cyan-500 border border-cyan-200 hover:border-cyan-500 text-cyan-700 hover:text-white py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
-                >
-                  Book Appointment
-                </Link>
+                <div className="p-6">
+                  <h3 className="text-xl font-bold text-slate-900">{doc.name}</h3>
+                  <p className="text-cyan-600 text-sm mt-1">{doc.role}</p>
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="flex items-center gap-1.5">
+                      <FaStar className="text-yellow-400 text-xs" />
+                      <span className="text-sm font-bold text-slate-900">{Number(doc.rating || 0).toFixed(1)}</span>
+                    </div>
+                    <span className="text-slate-400 text-xs flex items-center gap-1">
+                      <FaClock className="text-slate-400 text-[10px]" /> {doc.exp}
+                    </span>
+                  </div>
+                  <Link
+                    to="/contact"
+                    className="mt-5 block text-center w-full bg-cyan-50 hover:bg-cyan-500 border border-cyan-200 hover:border-cyan-500 text-cyan-700 hover:text-white py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+                  >
+                    Book Appointment
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </section>
 

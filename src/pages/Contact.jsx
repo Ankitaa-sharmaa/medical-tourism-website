@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../admin/firebase/config";
 import {
   FaEnvelope,
   FaPhoneAlt,
@@ -92,24 +94,31 @@ const Contact = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     setError("");
 
-    // Save to localStorage → visible in Admin → Contact Queries
     try {
-      const existing = JSON.parse(localStorage.getItem("admin_queries") || "[]");
-      const newQuery = {
-        ...form,
-        id: `admin_queries_${Date.now()}`,
-        status: "new",
-        createdAt: new Date().toISOString(),
-      };
-      localStorage.setItem("admin_queries", JSON.stringify([newQuery, ...existing]));
+      if (db) {
+        // Save to Firestore 'appointments' collection → visible in Admin Appointments page
+        await addDoc(collection(db, "appointments"), {
+          ...form,
+          status: "pending",
+          createdAt: serverTimestamp(),
+        });
+      } else {
+        // Fallback to localStorage when Firebase is not configured (local dev)
+        const existing = JSON.parse(localStorage.getItem("admin_queries") || "[]");
+        localStorage.setItem("admin_queries", JSON.stringify([
+          { ...form, id: `qry_${Date.now()}`, status: "new", createdAt: new Date().toISOString() },
+          ...existing,
+        ]));
+      }
       setSubmitted(true);
     } catch (err) {
-      setError("Something went wrong. Please try again.");
+      console.error("Contact form save error:", err);
+      setError("Something went wrong. Please try again or contact us directly.");
     } finally {
       setSaving(false);
     }
