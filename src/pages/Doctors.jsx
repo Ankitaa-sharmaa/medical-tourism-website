@@ -3,13 +3,12 @@ import { Link } from "react-router-dom";
 import AOS from "aos";
 import { FaArrowRight, FaStar, FaClock, FaGlobe, FaUserMd } from "react-icons/fa";
 import AnimatedCounter from "../components/AnimatedCounter";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
-import { db } from "../admin/firebase/config";
+import api, { mediaUrl } from "../api";
 
-// ── Static fallback (shown if Firestore is empty / not configured) ──
+// ── Static fallback (shown while API loads or on error) ─────────
 const FALLBACK_DOCTORS = [
   {
-    id: "f1",
+    _id: "f1",
     image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=600&auto=format&fit=crop",
     name: "Dr. Sarah Johnson", role: "Senior Cardiologist", specialty: "Cardiology",
     exp: "18 Yrs", rating: 4.9, hospital: "Fortis Heart Institute, Mumbai",
@@ -18,7 +17,7 @@ const FALLBACK_DOCTORS = [
     available: true,
   },
   {
-    id: "f2",
+    _id: "f2",
     image: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?q=80&w=600&auto=format&fit=crop",
     name: "Dr. Michael Lee", role: "Consultant Neurologist", specialty: "Neurology",
     exp: "14 Yrs", rating: 4.8, hospital: "Apollo Hospitals, Delhi",
@@ -27,7 +26,7 @@ const FALLBACK_DOCTORS = [
     available: true,
   },
   {
-    id: "f3",
+    _id: "f3",
     image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?q=80&w=600&auto=format&fit=crop",
     name: "Dr. Emily Davis", role: "Orthopedic Surgeon", specialty: "Orthopedics",
     exp: "12 Yrs", rating: 4.9, hospital: "Manipal Hospital, Bangalore",
@@ -36,7 +35,7 @@ const FALLBACK_DOCTORS = [
     available: false,
   },
   {
-    id: "f4",
+    _id: "f4",
     image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=600&auto=format&fit=crop",
     name: "Dr. Raj Patel", role: "Dental Surgeon & Implantologist", specialty: "Dental",
     exp: "10 Yrs", rating: 4.9, hospital: "Kaya Dental, Hyderabad",
@@ -45,7 +44,7 @@ const FALLBACK_DOCTORS = [
     available: true,
   },
   {
-    id: "f5",
+    _id: "f5",
     image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=600&auto=format&fit=crop",
     name: "Dr. Arjun Mehta", role: "General & Laparoscopic Surgeon", specialty: "Surgery",
     exp: "11 Yrs", rating: 4.7, hospital: "Global Hospitals, Chennai",
@@ -54,7 +53,7 @@ const FALLBACK_DOCTORS = [
     available: true,
   },
   {
-    id: "f6",
+    _id: "f6",
     image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?q=80&w=600&auto=format&fit=crop",
     name: "Dr. Priya Sharma", role: "Medical Oncologist", specialty: "Oncology",
     exp: "16 Yrs", rating: 4.8, hospital: "Tata Memorial Centre, Mumbai",
@@ -86,29 +85,16 @@ const Doctors = () => {
   const [loading, setLoading] = useState(true);
   const [active,  setActive]  = useState("All");
 
-  // Fetch from Firestore in real-time; fall back to static if unavailable
   useEffect(() => {
-    if (!db) {
-      setDoctors(FALLBACK_DOCTORS);
-      setLoading(false);
-      return;
-    }
-    const q = query(collection(db, "doctors"), orderBy("createdAt", "desc"));
-    const unsub = onSnapshot(
-      q,
-      snap => {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setDoctors(list.length > 0 ? list : FALLBACK_DOCTORS);
+    api.get("/doctors")
+      .then(({ data }) => {
+        setDoctors(data.length > 0 ? data : FALLBACK_DOCTORS);
+      })
+      .catch(() => setDoctors(FALLBACK_DOCTORS))
+      .finally(() => {
         setLoading(false);
         setTimeout(() => AOS.refresh(), 100);
-      },
-      err => {
-        console.error("[Doctors] Firestore error:", err);
-        setDoctors(FALLBACK_DOCTORS);
-        setLoading(false);
-      }
-    );
-    return unsub;
+      });
   }, []);
 
   useEffect(() => { if (!loading) AOS.refresh(); }, [loading]);
@@ -171,12 +157,12 @@ const Doctors = () => {
         ) : (
           <div className="grid md:grid-cols-3 gap-7">
             {filtered.map((doc, i) => (
-              <div key={doc.id || doc.name}
+              <div key={doc._id || doc.name}
                 className="bg-white border border-slate-200 rounded-3xl overflow-hidden hover:-translate-y-2 hover:shadow-xl transition-all duration-300 flex flex-col shadow-sm"
                 data-aos="fade-up" data-aos-delay={i * 80}>
                 <div className="relative">
                   <img
-                    src={doc.image || doc.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(doc.name)}&background=e0f2fe&color=0369a1&size=400`}
+                    src={mediaUrl(doc.image) || `https://ui-avatars.com/api/?name=${encodeURIComponent(doc.name)}&background=e0f2fe&color=0369a1&size=400`}
                     alt={doc.name}
                     loading="lazy"
                     className="h-64 w-full object-cover object-top"

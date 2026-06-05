@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../admin/firebase/config";
+import api from "../api";
 import {
   FaEnvelope,
   FaPhoneAlt,
@@ -85,10 +84,10 @@ const INITIAL_FORM = {
 };
 
 const Contact = () => {
-  const [form,      setForm]      = useState(INITIAL_FORM);
-  const [submitted, setSubmitted] = useState(false);
-  const [saving,    setSaving]    = useState(false);
-  const [error,     setError]     = useState("");
+  const [form,       setForm]       = useState(INITIAL_FORM);
+  const [submitted,  setSubmitted]  = useState(false);
+  const [saving,     setSaving]     = useState(false);
+  const [error,      setError]      = useState("");
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -98,25 +97,21 @@ const Contact = () => {
     e.preventDefault();
     setSaving(true);
     setError("");
-
     try {
-      if (!db) {
-        throw new Error("Firebase is not configured. Please contact us directly.");
-      }
-      await addDoc(collection(db, "appointments"), {
+      await api.post("/appointments", {
         fullName: form.name.trim(),
         email:    form.email.trim(),
         phone:    form.phone.trim(),
         country:  form.country,
         service:  form.service,
         message:  form.message.trim(),
-        status:   "pending",
-        createdAt: serverTimestamp(),
       });
       setSubmitted(true);
     } catch (err) {
-      console.error("Contact form save error:", err);
-      setError("Something went wrong. Please try again or contact us directly.");
+      setError(
+        err.response?.data?.message ||
+        "Something went wrong. Please try again or contact us directly."
+      );
     } finally {
       setSaving(false);
     }

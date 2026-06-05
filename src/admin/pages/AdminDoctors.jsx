@@ -1,15 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  collection, onSnapshot, addDoc, updateDoc,
-  deleteDoc, doc, serverTimestamp, query, orderBy,
-} from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase/config';
+import api, { mediaUrl } from '../../api';
 import { MOCK_DOCTORS } from '../data/mockData';
 import AdminLayout from '../components/AdminLayout';
 import {
   FaPlus, FaEdit, FaTrash, FaSearch, FaUserMd, FaTimes,
-  FaStar, FaUpload, FaCheckCircle, FaExclamationCircle,
+  FaStar, FaCheckCircle, FaExclamationCircle,
   FaInfoCircle, FaSpinner, FaImage,
 } from 'react-icons/fa';
 
@@ -135,23 +130,27 @@ const AdminDoctors = () => {
     setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4000);
   }, []);
 
-  // ── Real-time Firestore listener ──────────────────────────
-  useEffect(() => {
-    if (!db) { setLoading(false); return; }
-    const q = query(collection(db, 'doctors'), orderBy('createdAt', 'desc'));
-    const unsub = onSnapshot(q,
-      snap => { setDoctors(snap.docs.map(d => ({ id: d.id, ...d.data() }))); setLoading(false); },
-      err  => { console.error(err); toast('error', 'Could not load doctors: ' + err.message); setLoading(false); }
-    );
-    return unsub;
-  }, []);
+  // ── Fetch from API ────────────────────────────────────────
+  const fetchDoctors = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get('/doctors');
+      setDoctors(data);
+    } catch (err) {
+      toast('error', 'Could not load doctors: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => { fetchDoctors(); }, [fetchDoctors]);
 
   // ── Modal ─────────────────────────────────────────────────
   const openAdd = () => { setForm(EMPTY); setEditId(null); setImgFile(null); setImgPreview(''); setModal('add'); };
   const openEdit = d => {
     setForm({ name:d.name, role:d.role, specialty:d.specialty, exp:d.exp, hospital:d.hospital,
               rating:d.rating??4.5, bio:d.bio||'', image:d.image||'', langs:d.langs||'', available:d.available??true });
-    setEditId(d.id); setImgFile(null); setImgPreview(d.image||''); setModal('edit');
+    setEditId(d._id); setImgFile(null); setImgPreview(mediaUrl(d.image)||''); setModal('edit');
   };
   const close = () => { setModal(null); setForm(EMPTY); setEditId(null); setImgFile(null); setImgPreview(''); };
 
@@ -164,19 +163,21 @@ const AdminDoctors = () => {
     setForm(p => ({ ...p, image: '' }));
   };
 
-  // ── Upload to Firebase Storage ────────────────────────────
-  const uploadImage = file =>
-    new Promise((resolve, reject) => {
-      if (!storage) { reject(new Error('Firebase Storage not configured.')); return; }
-      const r = ref(storage, `doctors/${Date.now()}_${file.name}`);
-      const task = uploadBytesResumable(r, file);
-      setUploading(true); setImgProg(0);
-      task.on('state_changed',
-        snap => setImgProg((snap.bytesTransferred / snap.totalBytes) * 100),
-        err  => { setUploading(false); reject(err); },
-        async () => { const url = await getDownloadURL(task.snapshot.ref); setUploading(false); resolve(url); }
-      );
-    });
+  // ── Upload to backend via multer ──────────────────────────
+  const uploadImage = async file => {
+    setUploading(true); setImgProg(0);
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const { data } = await api.post('/doctors/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: e => setImgProg(Math.round((e.loaded / e.total) * 100)),
+      });
+      return data.url; // e.g. /uploads/1234567-filename.jpg
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // ── Save ──────────────────────────────────────────────────
   const handleSave = async e => {
@@ -190,42 +191,29 @@ const AdminDoctors = () => {
         toast('success', 'Photo uploaded!');
       }
       const payload = {
-        name: form.name.trim(), role: form.role.trim(), specialty: form.specialty,
-        exp: form.exp.trim(), hospital: form.hospital.trim(),
-        rating: parseFloat(form.rating) || 4.5, bio: form.bio.trim(),
-        image: imageUrl, langs: form.langs.trim(), available: form.available,
+        name:      form.name.trim(),
+        role:      form.role.trim(),
+        specialty: form.specialty,
+        exp:       form.exp.trim(),
+        hospital:  form.hospital.trim(),
+        rating:    parseFloat(form.rating) || 4.5,
+        bio:       form.bio.trim(),
+        image:     imageUrl,
+        langs:     form.langs.trim(),
+        available: form.available,
       };
       if (modal === 'add') {
-        await addDoc(collection(db, 'doctors'), { ...payload, createdAt: serverTimestamp() });
+        await api.post('/doctors', payload);
         toast('success', `Dr. ${payload.name} added successfully!`);
       } else {
-        await updateDoc(doc(db, 'doctors', editId), payload);
+        await api.put(`/doctors/${editId}`, payload);
         toast('success', `Dr. ${payload.name} updated!`);
       }
       close();
+      await fetchDoctors();
     } catch (err) {
-      console.error(err);
-      toast('error', 'Save failed: ' + err.message);
+      toast('error', 'Save failed: ' + (err.response?.data?.message || err.message));
     } finally { setSaving(false); }
-  };
-
-  // ── Seed demo data ────────────────────────────────────────
-  const [seeding, setSeeding] = useState(false);
-  const seedDoctors = async () => {
-    if (!db) return;
-    setSeeding(true);
-    try {
-      await Promise.all(
-        MOCK_DOCTORS.map(({ id: _id, ...d }) =>
-          addDoc(collection(db, 'doctors'), { ...d, createdAt: serverTimestamp() })
-        )
-      );
-      toast('success', `${MOCK_DOCTORS.length} demo doctors added to Firestore!`);
-    } catch (err) {
-      toast('error', 'Seeding failed: ' + err.message);
-    } finally {
-      setSeeding(false);
-    }
   };
 
   // ── Delete ────────────────────────────────────────────────
@@ -233,10 +221,26 @@ const AdminDoctors = () => {
     if (!window.confirm(`Delete ${name}? This cannot be undone.`)) return;
     setDeletingId(id);
     try {
-      await deleteDoc(doc(db, 'doctors', id));
+      await api.delete(`/doctors/${id}`);
       toast('success', `${name} removed.`);
-    } catch (err) { toast('error', 'Delete failed: ' + err.message); }
+      setDoctors(p => p.filter(d => d._id !== id));
+    } catch (err) { toast('error', 'Delete failed: ' + (err.response?.data?.message || err.message)); }
     finally { setDeletingId(null); }
+  };
+
+  // ── Seed demo data ────────────────────────────────────────
+  const [seeding, setSeeding] = useState(false);
+  const seedDoctors = async () => {
+    setSeeding(true);
+    try {
+      await Promise.all(
+        MOCK_DOCTORS.map(({ id: _id, createdAt: _c, ...d }) => api.post('/doctors', d))
+      );
+      toast('success', `${MOCK_DOCTORS.length} demo doctors added!`);
+      await fetchDoctors();
+    } catch (err) {
+      toast('error', 'Seeding failed: ' + (err.response?.data?.message || err.message));
+    } finally { setSeeding(false); }
   };
 
   const filtered = doctors.filter(d =>
@@ -258,18 +262,12 @@ const AdminDoctors = () => {
         </div>
         <div className="flex items-center gap-3">
           {!loading && <span className="text-xs text-slate-400 hidden sm:block">{filtered.length} doctor{filtered.length!==1?'s':''}</span>}
-          <button onClick={openAdd} disabled={!db}
-            className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition shadow-sm">
+          <button onClick={openAdd}
+            className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition shadow-sm">
             <FaPlus /> Add Doctor
           </button>
         </div>
       </div>
-
-      {!db && (
-        <div className="mb-5 px-4 py-3 bg-amber-50 border border-amber-300 rounded-xl text-sm text-amber-800">
-          <b>⚠️ Firestore not connected.</b> Set VITE_FIREBASE_* env vars and redeploy.
-        </div>
-      )}
 
       {/* Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -290,7 +288,7 @@ const AdminDoctors = () => {
             <p className="font-semibold text-slate-700 text-lg">{search ? 'No results found' : 'No doctors yet'}</p>
             <p className="text-slate-400 text-sm mt-1">{search ? `No match for "${search}"` : 'Click "Add Doctor" to add your first doctor.'}</p>
             {search && <button onClick={()=>setSearch('')} className="mt-4 text-cyan-600 text-sm font-semibold hover:underline">Clear search</button>}
-            {!search && db && (
+            {!search && (
               <button
                 onClick={seedDoctors}
                 disabled={seeding}
@@ -310,11 +308,11 @@ const AdminDoctors = () => {
               </thead>
               <tbody>
                 {filtered.map((d,i) => (
-                  <tr key={d.id} className={`border-b border-slate-100 hover:bg-slate-50/70 transition-colors ${i%2===1?'bg-slate-50/30':''}`}>
+                  <tr key={d._id} className={`border-b border-slate-100 hover:bg-slate-50/70 transition-colors ${i%2===1?'bg-slate-50/30':''}`}>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div className="relative flex-shrink-0">
-                          <img src={d.image||`https://ui-avatars.com/api/?name=${encodeURIComponent(d.name||'D')}&background=e0f2fe&color=0369a1`}
+                          <img src={mediaUrl(d.image)||`https://ui-avatars.com/api/?name=${encodeURIComponent(d.name||'D')}&background=e0f2fe&color=0369a1`}
                             alt={d.name} className="w-10 h-10 rounded-full object-cover border-2 border-slate-200"
                             onError={e=>{e.target.src=`https://ui-avatars.com/api/?name=${encodeURIComponent(d.name||'D')}&background=e0f2fe&color=0369a1`;}} />
                           <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${d.available?'bg-emerald-400':'bg-slate-300'}`}/>
@@ -336,8 +334,8 @@ const AdminDoctors = () => {
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={()=>openEdit(d)} className="p-2 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-xl transition"><FaEdit className="text-sm"/></button>
-                        <button onClick={()=>handleDelete(d.id,d.name)} disabled={deletingId===d.id} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition disabled:opacity-50">
-                          {deletingId===d.id?<FaSpinner className="text-sm text-red-400 animate-spin"/>:<FaTrash className="text-sm"/>}
+                        <button onClick={()=>handleDelete(d._id,d.name)} disabled={deletingId===d._id} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition disabled:opacity-50">
+                          {deletingId===d._id?<FaSpinner className="text-sm text-red-400 animate-spin"/>:<FaTrash className="text-sm"/>}
                         </button>
                       </div>
                     </td>
@@ -351,7 +349,7 @@ const AdminDoctors = () => {
           <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
             <p className="text-xs text-slate-400">{filtered.length} of {doctors.length} doctors</p>
             <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"/>Live · Firestore
+              <span className="w-2 h-2 rounded-full bg-emerald-400"/>MongoDB
             </span>
           </div>
         )}
@@ -364,7 +362,7 @@ const AdminDoctors = () => {
             <div className="flex items-center justify-between px-7 py-5 border-b border-slate-200">
               <div>
                 <h2 className="text-xl font-black text-slate-900">{modal==='add'?'Add New Doctor':'Edit Doctor'}</h2>
-                <p className="text-slate-400 text-xs mt-0.5">{modal==='add'?'Saved to Firestore instantly':`Editing: ${form.name}`}</p>
+                <p className="text-slate-400 text-xs mt-0.5">{modal==='add'?'Saved to MongoDB instantly':`Editing: ${form.name}`}</p>
               </div>
               <button onClick={close} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500"><FaTimes/></button>
             </div>

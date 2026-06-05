@@ -1,9 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-  collection, onSnapshot, addDoc, updateDoc,
-  deleteDoc, doc, serverTimestamp, query, orderBy,
-} from 'firebase/firestore';
-import { db } from '../firebase/config';
+import api from '../../api';
 import AdminLayout from '../components/AdminLayout';
 import {
   FaPlus, FaSearch, FaCalendarAlt, FaCheckCircle,
@@ -23,21 +19,20 @@ const EMPTY = { fullName:'', email:'', phone:'', country:'', service:'', message
 
 const formatDate = iso => {
   if (!iso) return '—';
-  const d = iso?.toDate ? iso.toDate() : new Date(iso);
-  return d.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+  return new Date(iso).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
 };
 
 const AdminAppointments = () => {
-  const [appts,      setAppts]      = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [search,     setSearch]     = useState('');
-  const [statusFilter,setStatusFilter]=useState('all');
-  const [modal,      setModal]      = useState(null);
-  const [selected,   setSelected]   = useState(null);
-  const [form,       setForm]       = useState(EMPTY);
-  const [saving,     setSaving]     = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
-  const [toasts,     setToasts]     = useState([]);
+  const [appts,        setAppts]        = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [search,       setSearch]       = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [modal,        setModal]        = useState(null);
+  const [selected,     setSelected]     = useState(null);
+  const [form,         setForm]         = useState(EMPTY);
+  const [saving,       setSaving]       = useState(false);
+  const [deletingId,   setDeletingId]   = useState(null);
+  const [toasts,       setToasts]       = useState([]);
 
   const toast = useCallback((type, msg) => {
     const id = Date.now() + Math.random();
@@ -45,45 +40,42 @@ const AdminAppointments = () => {
     setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4000);
   }, []);
 
-  // ── Real-time Firestore listener ──────────────────────────
-  useEffect(() => {
-    if (!db) { setLoading(false); return; }
-    const q = query(collection(db, 'appointments'), orderBy('createdAt', 'desc'));
-    const unsub = onSnapshot(q,
-      snap => { setAppts(snap.docs.map(d => ({ id: d.id, ...d.data() }))); setLoading(false); },
-      err  => { console.error(err); toast('error', err.message); setLoading(false); }
-    );
-    return unsub;
-  }, []);
+  // ── Fetch ─────────────────────────────────────────────────
+  const fetchAppts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get('/appointments');
+      setAppts(data);
+    } catch (err) {
+      toast('error', err.response?.data?.message || err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => { fetchAppts(); }, [fetchAppts]);
 
   // ── Add manually ─────────────────────────────────────────
   const handleAdd = async e => {
     e.preventDefault();
     setSaving(true);
     try {
-      await addDoc(collection(db, 'appointments'), {
-        fullName: form.fullName.trim(),
-        email:    form.email.trim(),
-        phone:    form.phone.trim(),
-        country:  form.country,
-        service:  form.service,
-        message:  form.message.trim(),
-        status:   'pending',
-        createdAt: serverTimestamp(),
-      });
+      await api.post('/appointments', form);
       toast('success', `Appointment for ${form.fullName} added.`);
       setModal(null); setForm(EMPTY);
-    } catch (err) { toast('error', err.message); }
+      await fetchAppts();
+    } catch (err) { toast('error', err.response?.data?.message || err.message); }
     finally { setSaving(false); }
   };
 
   // ── Update status ─────────────────────────────────────────
   const updateStatus = async (id, status) => {
     try {
-      await updateDoc(doc(db, 'appointments', id), { status });
+      const { data } = await api.patch(`/appointments/${id}`, { status });
+      setAppts(p => p.map(a => a._id === id ? data : a));
       toast('success', `Marked as ${status}.`);
-      if (selected?.id === id) setSelected(p => ({ ...p, status }));
-    } catch (err) { toast('error', err.message); }
+      if (selected?._id === id) setSelected(data);
+    } catch (err) { toast('error', err.response?.data?.message || err.message); }
   };
 
   // ── Delete ─────────────────────────────────────────────────
@@ -91,23 +83,24 @@ const AdminAppointments = () => {
     if (!window.confirm(`Delete appointment for ${name}?`)) return;
     setDeletingId(id);
     try {
-      await deleteDoc(doc(db, 'appointments', id));
-      toast('success', `Deleted.`);
+      await api.delete(`/appointments/${id}`);
+      toast('success', 'Deleted.');
+      setAppts(p => p.filter(a => a._id !== id));
       if (modal === 'view') setModal(null);
-    } catch (err) { toast('error', err.message); }
+    } catch (err) { toast('error', err.response?.data?.message || err.message); }
     finally { setDeletingId(null); }
   };
 
   const counts = {
-    all: appts.length,
+    all:      appts.length,
     pending:  appts.filter(a => a.status==='pending').length,
     approved: appts.filter(a => a.status==='approved').length,
     rejected: appts.filter(a => a.status==='rejected').length,
   };
 
   const filtered = appts.filter(a => {
-    const name = a.fullName || a.name || '';
-    const s = [name, a.email, a.service].some(v => v?.toLowerCase().includes(search.toLowerCase()));
+    const name = a.fullName || '';
+    const s  = [name, a.email, a.service].some(v => v?.toLowerCase().includes(search.toLowerCase()));
     const st = statusFilter==='all' || a.status===statusFilter;
     return s && st;
   });
@@ -136,8 +129,8 @@ const AdminAppointments = () => {
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, email, service…"
             className="pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-cyan-400 w-full sm:w-72 bg-white shadow-sm"/>
         </div>
-        <button onClick={()=>{setForm(EMPTY);setModal('add');}} disabled={!db}
-          className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition shadow-sm">
+        <button onClick={()=>{setForm(EMPTY);setModal('add');}}
+          className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition shadow-sm">
           <FaPlus/> Add Appointment
         </button>
       </div>
@@ -173,9 +166,9 @@ const AdminAppointments = () => {
               </thead>
               <tbody>
                 {filtered.map((a,i)=>(
-                  <tr key={a.id} className={`border-b border-slate-100 hover:bg-slate-50/70 transition-colors ${i%2===1?'bg-slate-50/30':''}`}>
+                  <tr key={a._id} className={`border-b border-slate-100 hover:bg-slate-50/70 transition-colors ${i%2===1?'bg-slate-50/30':''}`}>
                     <td className="px-5 py-4">
-                      <p className="font-semibold text-slate-900">{a.fullName || a.name}</p>
+                      <p className="font-semibold text-slate-900">{a.fullName}</p>
                       <p className="text-xs text-slate-400">{a.email}</p>
                     </td>
                     <td className="px-5 py-4 text-slate-600">{a.service||'—'}</td>
@@ -187,10 +180,10 @@ const AdminAppointments = () => {
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={()=>{setSelected(a);setModal('view');}} className="p-2 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-xl transition"><FaEye className="text-sm"/></button>
-                        {a.status!=='approved'&&<button onClick={()=>updateStatus(a.id,'approved')} className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition"><FaCheckCircle className="text-sm"/></button>}
-                        {a.status!=='rejected'&&<button onClick={()=>updateStatus(a.id,'rejected')} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition"><FaBan className="text-sm"/></button>}
-                        <button onClick={()=>handleDelete(a.id,a.fullName||a.name)} disabled={deletingId===a.id} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition disabled:opacity-50">
-                          {deletingId===a.id?<FaSpinner className="text-sm animate-spin"/>:<FaTrash className="text-sm"/>}
+                        {a.status!=='approved'&&<button onClick={()=>updateStatus(a._id,'approved')} className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition"><FaCheckCircle className="text-sm"/></button>}
+                        {a.status!=='rejected'&&<button onClick={()=>updateStatus(a._id,'rejected')} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition"><FaBan className="text-sm"/></button>}
+                        <button onClick={()=>handleDelete(a._id,a.fullName)} disabled={deletingId===a._id} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition disabled:opacity-50">
+                          {deletingId===a._id?<FaSpinner className="text-sm animate-spin"/>:<FaTrash className="text-sm"/>}
                         </button>
                       </div>
                     </td>
@@ -204,7 +197,7 @@ const AdminAppointments = () => {
           <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
             <p className="text-xs text-slate-400">{filtered.length} of {appts.length} appointments</p>
             <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"/>Live · Firestore
+              <span className="w-2 h-2 rounded-full bg-emerald-400"/>MongoDB
             </span>
           </div>
         )}
@@ -264,15 +257,15 @@ const AdminAppointments = () => {
             </div>
             <div className="px-7 py-6 space-y-4">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-lg uppercase">{(selected.fullName||selected.name||'?')[0].toUpperCase()}</div>
-                <div><p className="font-bold text-slate-900 text-lg">{selected.fullName||selected.name}</p><p className="text-slate-500 text-sm">{selected.email}</p></div>
+                <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-lg uppercase">{(selected.fullName||'?')[0].toUpperCase()}</div>
+                <div><p className="font-bold text-slate-900 text-lg">{selected.fullName}</p><p className="text-slate-500 text-sm">{selected.email}</p></div>
               </div>
               {[
-                ['Phone',   selected.phone||'—'],
-                ['Country', selected.country||'—'],
-                ['Service', selected.service||'—'],
+                ['Phone',   selected.phone  || '—'],
+                ['Country', selected.country|| '—'],
+                ['Service', selected.service|| '—'],
                 ['Date',    formatDate(selected.createdAt)],
-                ['Message', selected.message || selected.notes || '—'],
+                ['Message', selected.message|| '—'],
               ].map(([lb,val])=>(
                 <div key={lb} className="flex justify-between items-start gap-4">
                   <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-0.5 w-16 flex-shrink-0">{lb}</span>
@@ -282,9 +275,9 @@ const AdminAppointments = () => {
               <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                 <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${STATUS_STYLE[selected.status]??STATUS_STYLE.pending}`}>{selected.status??'pending'}</span>
                 <div className="flex gap-2">
-                  {selected.status!=='approved'&&<button onClick={()=>updateStatus(selected.id,'approved')} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-bold transition">Approve</button>}
-                  {selected.status!=='rejected'&&<button onClick={()=>updateStatus(selected.id,'rejected')} className="px-4 py-2 bg-red-500 hover:bg-red-400 text-white rounded-xl text-xs font-bold transition">Reject</button>}
-                  <button onClick={()=>handleDelete(selected.id,selected.fullName||selected.name)} className="px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-xl text-xs font-bold transition">Delete</button>
+                  {selected.status!=='approved'&&<button onClick={()=>updateStatus(selected._id,'approved')} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-bold transition">Approve</button>}
+                  {selected.status!=='rejected'&&<button onClick={()=>updateStatus(selected._id,'rejected')} className="px-4 py-2 bg-red-500 hover:bg-red-400 text-white rounded-xl text-xs font-bold transition">Reject</button>}
+                  <button onClick={()=>handleDelete(selected._id,selected.fullName)} className="px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-xl text-xs font-bold transition">Delete</button>
                 </div>
               </div>
             </div>

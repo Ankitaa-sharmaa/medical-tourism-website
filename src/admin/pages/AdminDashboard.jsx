@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
-import { db } from '../firebase/config';
+import api from '../../api';
 import useLocalData from '../hooks/useLocalData';
 import { MOCK_TESTIMONIALS, MOCK_QUERIES } from '../data/mockData';
 import AdminLayout from '../components/AdminLayout';
@@ -17,8 +16,7 @@ const STATUS_STYLE = {
 
 const formatDate = iso => {
   if (!iso) return '—';
-  const d = iso?.toDate ? iso.toDate() : new Date(iso);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
 const StatCard = ({ icon, label, value, color, sub, to }) => (
@@ -34,38 +32,37 @@ const StatCard = ({ icon, label, value, color, sub, to }) => (
 );
 
 const AdminDashboard = () => {
-  // Firestore: doctors + appointments
   const [doctorsCount,   setDoctorsCount]   = useState(null);
   const [apptCount,      setApptCount]      = useState(null);
   const [pendingCount,   setPendingCount]   = useState(0);
   const [availableCount, setAvailableCount] = useState(0);
   const [recentAppts,    setRecentAppts]    = useState([]);
-  const [loadingFirestore, setLoadingFirestore] = useState(true);
+  const [loading,        setLoading]        = useState(true);
 
-  // localStorage: testimonials + queries (still local)
+  // Testimonials + queries stay in localStorage for now
   const { items: testimonials } = useLocalData('admin_testimonials', MOCK_TESTIMONIALS);
   const { items: queries }      = useLocalData('admin_queries',      MOCK_QUERIES);
   const openQueries = useMemo(() => queries.filter(q => !q.status || q.status === 'new').length, [queries]);
 
   useEffect(() => {
-    if (!db) { setLoadingFirestore(false); return; }
-
-    // Live counts for doctors
-    const unsub1 = onSnapshot(collection(db, 'doctors'), snap => {
-      setDoctorsCount(snap.size);
-      setAvailableCount(snap.docs.filter(d => d.data().available).length);
-    });
-
-    // Live counts + recent for appointments
-    const apptQ = query(collection(db, 'appointments'), orderBy('createdAt', 'desc'));
-    const unsub2 = onSnapshot(apptQ, snap => {
-      setApptCount(snap.size);
-      setPendingCount(snap.docs.filter(d => d.data().status === 'pending').length);
-      setRecentAppts(snap.docs.slice(0, 5).map(d => ({ id: d.id, ...d.data() })));
-      setLoadingFirestore(false);
-    });
-
-    return () => { unsub1(); unsub2(); };
+    const load = async () => {
+      try {
+        const [{ data: doctors }, { data: appts }] = await Promise.all([
+          api.get('/doctors'),
+          api.get('/appointments'),
+        ]);
+        setDoctorsCount(doctors.length);
+        setAvailableCount(doctors.filter(d => d.available).length);
+        setApptCount(appts.length);
+        setPendingCount(appts.filter(a => a.status === 'pending').length);
+        setRecentAppts(appts.slice(0, 5));
+      } catch (err) {
+        console.error('[Dashboard] load error:', err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
   const recentQueries = queries.slice(0, 5);
@@ -83,28 +80,27 @@ const AdminDashboard = () => {
 
       <div className="grid lg:grid-cols-2 gap-6 mb-6">
 
-        {/* Recent Appointments (Firestore) */}
+        {/* Recent Appointments (MongoDB) */}
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
             <div className="flex items-center gap-2">
               <h2 className="font-bold text-slate-900">Recent Appointments</h2>
-              {db && <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium"><span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"/>Live</span>}
             </div>
             <Link to="/admin/appointments" className="text-xs text-cyan-600 hover:text-cyan-500 font-semibold flex items-center gap-1">
               View all <FaArrowRight className="text-[10px]" />
             </Link>
           </div>
-          {loadingFirestore ? (
+          {loading ? (
             <div className="flex items-center justify-center py-10"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-500"/></div>
           ) : recentAppts.length === 0 ? (
             <div className="text-center py-10 text-slate-400 text-sm">No appointments yet. They appear here when users submit the consultation form.</div>
           ) : (
             <div className="divide-y divide-slate-100">
               {recentAppts.map(a => (
-                <div key={a.id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50 transition">
-                  <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-sm uppercase flex-shrink-0">{(a.fullName||a.name||'?')[0].toUpperCase()}</div>
+                <div key={a._id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50 transition">
+                  <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-sm uppercase flex-shrink-0">{(a.fullName||'?')[0].toUpperCase()}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-slate-900 truncate">{a.fullName||a.name}</p>
+                    <p className="font-semibold text-sm text-slate-900 truncate">{a.fullName}</p>
                     <p className="text-xs text-slate-400 truncate">{a.service||'—'} · {formatDate(a.createdAt)}</p>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${STATUS_STYLE[a.status]??STATUS_STYLE.pending}`}>{a.status??'pending'}</span>

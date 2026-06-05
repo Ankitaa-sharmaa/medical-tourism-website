@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import AnimatedCounter from "../components/AnimatedCounter";
-import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
-import { db } from "../admin/firebase/config";
+import api, { mediaUrl } from "../api";
 import {
   FaArrowRight,
   FaHeartbeat,
@@ -158,19 +157,12 @@ const Home = () => {
   const [doctors,  setDoctors]  = useState(FALLBACK_DOCTORS);
   const [docLoading, setDocLoading] = useState(true);
 
-  // Fetch live doctors from Firestore (first 3)
+  // Fetch first 3 doctors from API
   useEffect(() => {
-    if (!db) { setDocLoading(false); return; }
-    const q = query(collection(db, "doctors"), orderBy("createdAt", "desc"), limit(3));
-    const unsub = onSnapshot(q,
-      snap => {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setDoctors(list.length > 0 ? list : FALLBACK_DOCTORS);
-        setDocLoading(false);
-      },
-      err => { console.error(err); setDocLoading(false); }
-    );
-    return unsub;
+    api.get("/doctors?limit=3")
+      .then(({ data }) => setDoctors(data.length > 0 ? data : FALLBACK_DOCTORS))
+      .catch(() => setDoctors(FALLBACK_DOCTORS))
+      .finally(() => setDocLoading(false));
   }, []);
 
   return (
@@ -405,14 +397,14 @@ const Home = () => {
           ) : (
             doctors.map((doc, i) => (
               <div
-                key={doc.id || i}
+                key={doc._id || doc.id || i}
                 className="bg-white border border-slate-200 rounded-3xl overflow-hidden hover:-translate-y-2 hover:shadow-xl transition-all duration-300 shadow-sm"
                 data-aos="fade-up"
                 data-aos-delay={i * 100}
               >
                 <div className="relative">
                   <img
-                    src={doc.image || doc.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(doc.name)}&background=e0f2fe&color=0369a1&size=400`}
+                    src={mediaUrl(doc.image) || `https://ui-avatars.com/api/?name=${encodeURIComponent(doc.name)}&background=e0f2fe&color=0369a1&size=400`}
                     alt={doc.name}
                     className="h-64 w-full object-cover object-top"
                     onError={e => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(doc.name)}&background=e0f2fe&color=0369a1&size=400`; }}
