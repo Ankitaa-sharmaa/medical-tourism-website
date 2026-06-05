@@ -12,11 +12,13 @@ api.interceptors.request.use(config => {
   return config;
 });
 
-// On 401 clear stale credentials and bounce to login
+// On 401 clear stale credentials and bounce to login —
+// but never redirect on the login endpoint itself (wrong password is a 401 too).
 api.interceptors.response.use(
   res => res,
   err => {
-    if (err.response?.status === 401) {
+    const isLoginEndpoint = err.config?.url?.includes('/auth/login');
+    if (err.response?.status === 401 && !isLoginEndpoint) {
       localStorage.removeItem('medtour_token');
       localStorage.removeItem('medtour_user');
       window.location.href = '/admin/login';
