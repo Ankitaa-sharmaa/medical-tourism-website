@@ -5,6 +5,7 @@ import {
   FaChartBar,
   FaUserMd,
   FaCalendarAlt,
+  FaStethoscope,
   FaStar,
   FaEnvelope,
   FaSignOutAlt,
@@ -17,6 +18,7 @@ const NAV = [
   { to: '/admin/dashboard',    icon: <FaChartBar />,     label: 'Dashboard'     },
   { to: '/admin/doctors',      icon: <FaUserMd />,       label: 'Doctors'       },
   { to: '/admin/appointments', icon: <FaCalendarAlt />,  label: 'Appointments'  },
+  { to: '/admin/services',     icon: <FaStethoscope />,  label: 'Services'      },
   { to: '/admin/testimonials', icon: <FaStar />,         label: 'Testimonials'  },
   { to: '/admin/queries',      icon: <FaEnvelope />,     label: 'Queries'       },
 ];

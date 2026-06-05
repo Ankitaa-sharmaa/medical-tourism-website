@@ -16,6 +16,7 @@ import AdminLogin        from "./admin/pages/AdminLogin";
 import AdminDashboard    from "./admin/pages/AdminDashboard";
 import AdminDoctors      from "./admin/pages/AdminDoctors";
 import AdminAppointments from "./admin/pages/AdminAppointments";
+import AdminServices     from "./admin/pages/AdminServices";
 import AdminTestimonials from "./admin/pages/AdminTestimonials";
 import AdminQueries      from "./admin/pages/AdminQueries";
 import ProtectedRoute    from "./admin/components/ProtectedRoute";
@@ -41,6 +42,7 @@ function App() {
           <Route path="/admin/dashboard"    element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/doctors"      element={<ProtectedRoute><AdminDoctors /></ProtectedRoute>} />
           <Route path="/admin/appointments" element={<ProtectedRoute><AdminAppointments /></ProtectedRoute>} />
+          <Route path="/admin/services"     element={<ProtectedRoute><AdminServices /></ProtectedRoute>} />
           <Route path="/admin/testimonials" element={<ProtectedRoute><AdminTestimonials /></ProtectedRoute>} />
           <Route path="/admin/queries"      element={<ProtectedRoute><AdminQueries /></ProtectedRoute>} />
 
