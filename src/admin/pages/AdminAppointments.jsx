@@ -44,7 +44,7 @@ const AdminAppointments = () => {
     setLoading(true);
     try {
       const { data } = await api.get('/appointments');
-      setAppts(data);
+      setAppts(Array.isArray(data) ? data : []);
     } catch (err) {
       toast('error', err.response?.data?.message || err.message);
     } finally {

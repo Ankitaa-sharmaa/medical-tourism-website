@@ -47,10 +47,12 @@ const AdminDashboard = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const [{ data: doctors }, { data: appts }] = await Promise.all([
+        const [{ data: rawDoctors }, { data: rawAppts }] = await Promise.all([
           api.get('/doctors'),
           api.get('/appointments'),
         ]);
+        const doctors = Array.isArray(rawDoctors) ? rawDoctors : [];
+        const appts   = Array.isArray(rawAppts)   ? rawAppts   : [];
         setDoctorsCount(doctors.length);
         setAvailableCount(doctors.filter(d => d.available).length);
         setApptCount(appts.length);

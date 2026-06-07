@@ -87,7 +87,7 @@ const AdminServices = () => {
     setLoading(true);
     try {
       const { data } = await api.get('/services');
-      setServices(data);
+      setServices(Array.isArray(data) ? data : []);
     } catch (err) {
       toast('error', err.response?.data?.message || err.message);
     } finally {

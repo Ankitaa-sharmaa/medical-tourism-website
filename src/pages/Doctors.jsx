@@ -88,7 +88,7 @@ const Doctors = () => {
   useEffect(() => {
     api.get("/doctors")
       .then(({ data }) => {
-        setDoctors(data.length > 0 ? data : FALLBACK_DOCTORS);
+        setDoctors(Array.isArray(data) && data.length > 0 ? data : FALLBACK_DOCTORS);
       })
       .catch(() => setDoctors(FALLBACK_DOCTORS))
       .finally(() => {

@@ -140,7 +140,7 @@ const Services = () => {
   useEffect(() => {
     api.get("/services")
       .then(({ data }) => {
-        setServices(data.length > 0 ? data : FALLBACK_SERVICES);
+        setServices(Array.isArray(data) && data.length > 0 ? data : FALLBACK_SERVICES);
       })
       .catch(() => setServices(FALLBACK_SERVICES))
       .finally(() => {
@@ -236,7 +236,7 @@ const Services = () => {
                   </div>
                   <h3 className="text-xl font-bold mb-3 text-slate-900">{s.title}</h3>
                   <p className="text-slate-600 text-sm leading-relaxed mb-6">{s.desc}</p>
-                  {s.features?.length > 0 && (
+                  {Array.isArray(s.features) && s.features.length > 0 && (
                     <ul className="space-y-2 mb-6">
                       {s.features.map((feat) => (
                         <li key={feat} className="flex items-center gap-2 text-slate-700 text-sm">

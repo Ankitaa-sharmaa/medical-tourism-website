@@ -135,7 +135,7 @@ const AdminDoctors = () => {
     setLoading(true);
     try {
       const { data } = await api.get('/doctors');
-      setDoctors(data);
+      setDoctors(Array.isArray(data) ? data : []);
     } catch (err) {
       toast('error', 'Could not load doctors: ' + (err.response?.data?.message || err.message));
     } finally {

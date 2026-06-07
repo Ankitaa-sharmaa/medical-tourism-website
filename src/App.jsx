@@ -1,5 +1,39 @@
+import { Component } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./admin/contexts/AuthContext";
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error, info) {
+    console.error("[ErrorBoundary]", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", padding: "1.5rem" }}>
+          <div style={{ textAlign: "center", maxWidth: 420 }}>
+            <p style={{ fontSize: "3rem", marginBottom: "1rem" }}>⚠️</p>
+            <h1 style={{ fontSize: "1.5rem", fontWeight: 900, color: "#0f172a", marginBottom: "0.5rem" }}>Something went wrong</h1>
+            <p style={{ color: "#64748b", marginBottom: "1.5rem" }}>An unexpected error occurred. Please refresh the page to try again.</p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{ background: "#06b6d4", color: "#fff", padding: "0.75rem 1.5rem", borderRadius: "9999px", fontWeight: 700, border: "none", cursor: "pointer" }}
+            >
+              Refresh Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // ── Frontend ──
 import Layout from "./components/Layout";
@@ -23,7 +57,8 @@ import ProtectedRoute    from "./admin/components/ProtectedRoute";
 
 function App() {
   return (
-    // AuthProvider wraps everything so both frontend and admin share auth state
+    <ErrorBoundary>
+    {/* AuthProvider wraps everything so both frontend and admin share auth state */}
     <AuthProvider>
       <BrowserRouter>
         <ScrollToTop />
@@ -52,6 +87,7 @@ function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

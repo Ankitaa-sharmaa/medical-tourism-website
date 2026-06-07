@@ -160,7 +160,7 @@ const Home = () => {
   // Fetch first 3 doctors from API
   useEffect(() => {
     api.get("/doctors?limit=3")
-      .then(({ data }) => setDoctors(data.length > 0 ? data : FALLBACK_DOCTORS))
+      .then(({ data }) => setDoctors(Array.isArray(data) && data.length > 0 ? data : FALLBACK_DOCTORS))
       .catch(() => setDoctors(FALLBACK_DOCTORS))
       .finally(() => setDocLoading(false));
   }, []);
