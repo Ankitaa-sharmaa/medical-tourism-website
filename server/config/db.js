@@ -6,7 +6,8 @@ const connectDB = async () => {
     console.log(`[MedTour] MongoDB connected: ${conn.connection.host}`);
   } catch (err) {
     console.error('[MedTour] MongoDB connection error:', err.message);
-    process.exit(1);
+    console.error('[MedTour] Server will continue — auth/JWT routes still work without DB.');
+    // Do not exit: auth routes don't need MongoDB, server must stay alive.
   }
 };
 
