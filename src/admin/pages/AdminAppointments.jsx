@@ -3,19 +3,19 @@ import api from '../../api';
 import AdminLayout from '../components/AdminLayout';
 import {
   FaPlus, FaSearch, FaCalendarAlt, FaCheckCircle,
-  FaBan, FaTrash, FaTimes, FaEye, FaSpinner, FaExclamationCircle,
+  FaCheck, FaTrash, FaTimes, FaEye, FaSpinner, FaExclamationCircle,
 } from 'react-icons/fa';
 
 const SERVICES  = ['Cardiology','Neurology','Orthopedics','Dental Care','Eye Care','General Surgery','Oncology','Wellness','Other'];
 const COUNTRIES = ['United States','United Kingdom','UAE','Canada','Australia','Germany','France','Saudi Arabia','Bangladesh','Nigeria','Kenya','Other'];
 
 const STATUS_STYLE = {
-  pending:  'bg-yellow-100 text-yellow-700 border border-yellow-200',
-  approved: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
-  rejected: 'bg-red-100 text-red-600 border border-red-200',
+  pending:   'bg-yellow-100 text-yellow-700 border border-yellow-200',
+  confirmed: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+  completed: 'bg-blue-100 text-blue-700 border border-blue-200',
 };
 
-const EMPTY = { fullName:'', email:'', phone:'', country:'', service:'', message:'' };
+const EMPTY = { fullName:'', email:'', phone:'', country:'', service:'', preferredDate:'', message:'' };
 
 const formatDate = iso => {
   if (!iso) return '—';
@@ -40,7 +40,6 @@ const AdminAppointments = () => {
     setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4000);
   }, []);
 
-  // ── Fetch ─────────────────────────────────────────────────
   const fetchAppts = useCallback(async () => {
     setLoading(true);
     try {
@@ -55,7 +54,6 @@ const AdminAppointments = () => {
 
   useEffect(() => { fetchAppts(); }, [fetchAppts]);
 
-  // ── Add manually ─────────────────────────────────────────
   const handleAdd = async e => {
     e.preventDefault();
     setSaving(true);
@@ -68,7 +66,6 @@ const AdminAppointments = () => {
     finally { setSaving(false); }
   };
 
-  // ── Update status ─────────────────────────────────────────
   const updateStatus = async (id, status) => {
     try {
       const { data } = await api.patch(`/appointments/${id}`, { status });
@@ -78,7 +75,6 @@ const AdminAppointments = () => {
     } catch (err) { toast('error', err.response?.data?.message || err.message); }
   };
 
-  // ── Delete ─────────────────────────────────────────────────
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Delete appointment for ${name}?`)) return;
     setDeletingId(id);
@@ -92,16 +88,15 @@ const AdminAppointments = () => {
   };
 
   const counts = {
-    all:      appts.length,
-    pending:  appts.filter(a => a.status==='pending').length,
-    approved: appts.filter(a => a.status==='approved').length,
-    rejected: appts.filter(a => a.status==='rejected').length,
+    all:       appts.length,
+    pending:   appts.filter(a => a.status === 'pending').length,
+    confirmed: appts.filter(a => a.status === 'confirmed').length,
+    completed: appts.filter(a => a.status === 'completed').length,
   };
 
   const filtered = appts.filter(a => {
-    const name = a.fullName || '';
-    const s  = [name, a.email, a.service].some(v => v?.toLowerCase().includes(search.toLowerCase()));
-    const st = statusFilter==='all' || a.status===statusFilter;
+    const s  = [a.fullName, a.email, a.service].some(v => v?.toLowerCase().includes(search.toLowerCase()));
+    const st = statusFilter === 'all' || a.status === statusFilter;
     return s && st;
   });
 
@@ -137,7 +132,7 @@ const AdminAppointments = () => {
 
       {/* Status filter tabs */}
       <div className="flex gap-2 mb-5 flex-wrap">
-        {[['all','All'],['pending','Pending'],['approved','Approved'],['rejected','Rejected']].map(([key,label])=>(
+        {[['all','All'],['pending','Pending'],['confirmed','Confirmed'],['completed','Completed']].map(([key,label])=>(
           <button key={key} onClick={()=>setStatusFilter(key)}
             className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${statusFilter===key?'bg-cyan-500 text-white shadow-sm':'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
             {label}
@@ -158,10 +153,10 @@ const AdminAppointments = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[700px]">
+            <table className="w-full text-sm min-w-[750px]">
               <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>{['Patient','Service','Country','Date','Status','Actions'].map(h=>(
-                  <th key={h} className={`text-left px-5 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider ${h==='Country'?'hidden md:table-cell':''} ${h==='Date'?'hidden lg:table-cell':''}`}>{h}</th>
+                <tr>{['Patient','Service','Preferred Date','Country','Status','Actions'].map(h=>(
+                  <th key={h} className={`text-left px-5 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider ${h==='Country'?'hidden md:table-cell':''} ${h==='Preferred Date'?'hidden lg:table-cell':''}`}>{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
@@ -172,17 +167,25 @@ const AdminAppointments = () => {
                       <p className="text-xs text-slate-400">{a.email}</p>
                     </td>
                     <td className="px-5 py-4 text-slate-600">{a.service||'—'}</td>
+                    <td className="px-5 py-4 text-slate-500 text-xs hidden lg:table-cell">
+                      {a.preferredDate ? (
+                        <span className="bg-cyan-50 text-cyan-700 border border-cyan-100 px-2 py-1 rounded-lg">{a.preferredDate}</span>
+                      ) : '—'}
+                    </td>
                     <td className="px-5 py-4 text-slate-400 text-xs hidden md:table-cell">{a.country||'—'}</td>
-                    <td className="px-5 py-4 text-slate-400 text-xs hidden lg:table-cell">{formatDate(a.createdAt)}</td>
                     <td className="px-5 py-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${STATUS_STYLE[a.status]??STATUS_STYLE.pending}`}>{a.status??'pending'}</span>
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={()=>{setSelected(a);setModal('view');}} className="p-2 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-xl transition"><FaEye className="text-sm"/></button>
-                        {a.status!=='approved'&&<button onClick={()=>updateStatus(a._id,'approved')} className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition"><FaCheckCircle className="text-sm"/></button>}
-                        {a.status!=='rejected'&&<button onClick={()=>updateStatus(a._id,'rejected')} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition"><FaBan className="text-sm"/></button>}
-                        <button onClick={()=>handleDelete(a._id,a.fullName)} disabled={deletingId===a._id} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition disabled:opacity-50">
+                        <button onClick={()=>{setSelected(a);setModal('view');}} title="View" className="p-2 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-xl transition"><FaEye className="text-sm"/></button>
+                        {a.status!=='confirmed'&&a.status!=='completed'&&(
+                          <button onClick={()=>updateStatus(a._id,'confirmed')} title="Confirm" className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition"><FaCheckCircle className="text-sm"/></button>
+                        )}
+                        {a.status==='confirmed'&&(
+                          <button onClick={()=>updateStatus(a._id,'completed')} title="Mark Complete" className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition"><FaCheck className="text-sm"/></button>
+                        )}
+                        <button onClick={()=>handleDelete(a._id,a.fullName)} disabled={deletingId===a._id} title="Delete" className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition disabled:opacity-50">
                           {deletingId===a._id?<FaSpinner className="text-sm animate-spin"/>:<FaTrash className="text-sm"/>}
                         </button>
                       </div>
@@ -232,6 +235,11 @@ const AdminAppointments = () => {
                 ))}
               </div>
               <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Preferred Date</label>
+                <input type="date" value={form.preferredDate} onChange={e=>setForm(p=>({...p,preferredDate:e.target.value}))}
+                  className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-cyan-400 bg-white transition"/>
+              </div>
+              <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Message / Notes</label>
                 <textarea rows={3} value={form.message} onChange={e=>setForm(p=>({...p,message:e.target.value}))} placeholder="Patient's message or additional notes…"
                   className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-cyan-400 bg-white resize-none transition"/>
@@ -261,22 +269,27 @@ const AdminAppointments = () => {
                 <div><p className="font-bold text-slate-900 text-lg">{selected.fullName}</p><p className="text-slate-500 text-sm">{selected.email}</p></div>
               </div>
               {[
-                ['Phone',   selected.phone  || '—'],
-                ['Country', selected.country|| '—'],
-                ['Service', selected.service|| '—'],
-                ['Date',    formatDate(selected.createdAt)],
-                ['Message', selected.message|| '—'],
+                ['Phone',     selected.phone        || '—'],
+                ['Country',   selected.country      || '—'],
+                ['Service',   selected.service      || '—'],
+                ['Preferred', selected.preferredDate|| '—'],
+                ['Submitted', formatDate(selected.createdAt)],
+                ['Message',   selected.message      || '—'],
               ].map(([lb,val])=>(
                 <div key={lb} className="flex justify-between items-start gap-4">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-0.5 w-16 flex-shrink-0">{lb}</span>
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-0.5 w-20 flex-shrink-0">{lb}</span>
                   <span className="text-sm text-slate-700 text-right">{val}</span>
                 </div>
               ))}
               <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                 <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${STATUS_STYLE[selected.status]??STATUS_STYLE.pending}`}>{selected.status??'pending'}</span>
                 <div className="flex gap-2">
-                  {selected.status!=='approved'&&<button onClick={()=>updateStatus(selected._id,'approved')} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-bold transition">Approve</button>}
-                  {selected.status!=='rejected'&&<button onClick={()=>updateStatus(selected._id,'rejected')} className="px-4 py-2 bg-red-500 hover:bg-red-400 text-white rounded-xl text-xs font-bold transition">Reject</button>}
+                  {selected.status==='pending'&&(
+                    <button onClick={()=>updateStatus(selected._id,'confirmed')} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-bold transition">Confirm</button>
+                  )}
+                  {selected.status==='confirmed'&&(
+                    <button onClick={()=>updateStatus(selected._id,'completed')} className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-xs font-bold transition">Complete</button>
+                  )}
                   <button onClick={()=>handleDelete(selected._id,selected.fullName)} className="px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-xl text-xs font-bold transition">Delete</button>
                 </div>
               </div>

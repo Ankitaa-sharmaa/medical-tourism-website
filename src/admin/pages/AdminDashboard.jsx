@@ -7,11 +7,11 @@ import AdminLayout from '../components/AdminLayout';
 import { FaUserMd, FaCalendarAlt, FaStar, FaEnvelope, FaArrowRight } from 'react-icons/fa';
 
 const STATUS_STYLE = {
-  pending:  'bg-yellow-100 text-yellow-700',
-  approved: 'bg-emerald-100 text-emerald-700',
-  rejected: 'bg-red-100 text-red-600',
-  new:      'bg-sky-100 text-sky-700',
-  resolved: 'bg-slate-100 text-slate-500',
+  pending:   'bg-yellow-100 text-yellow-700',
+  confirmed: 'bg-emerald-100 text-emerald-700',
+  completed: 'bg-blue-100 text-blue-700',
+  new:       'bg-sky-100 text-sky-700',
+  resolved:  'bg-slate-100 text-slate-500',
 };
 
 const formatDate = iso => {

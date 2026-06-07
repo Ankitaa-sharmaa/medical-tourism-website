@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import api from "../api";
 import {
@@ -10,6 +10,7 @@ import {
   FaCheckCircle,
   FaWhatsapp,
   FaChevronDown,
+  FaTimes,
 } from "react-icons/fa";
 
 const SERVICES_LIST = [
@@ -80,14 +81,21 @@ const INITIAL_FORM = {
   phone: "",
   country: "",
   service: "",
+  preferredDate: "",
   message: "",
 };
 
 const Contact = () => {
-  const [form,       setForm]       = useState(INITIAL_FORM);
-  const [submitted,  setSubmitted]  = useState(false);
-  const [saving,     setSaving]     = useState(false);
-  const [error,      setError]      = useState("");
+  const [form,    setForm]    = useState(INITIAL_FORM);
+  const [saving,  setSaving]  = useState(false);
+  const [error,   setError]   = useState("");
+  const [toast,   setToast]   = useState(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -99,14 +107,16 @@ const Contact = () => {
     setError("");
     try {
       await api.post("/appointments", {
-        fullName: form.name.trim(),
-        email:    form.email.trim(),
-        phone:    form.phone.trim(),
-        country:  form.country,
-        service:  form.service,
-        message:  form.message.trim(),
+        fullName:      form.name.trim(),
+        email:         form.email.trim(),
+        phone:         form.phone.trim(),
+        country:       form.country,
+        service:       form.service,
+        preferredDate: form.preferredDate,
+        message:       form.message.trim(),
       });
-      setSubmitted(true);
+      setToast(form.name.trim() || "there");
+      setForm(INITIAL_FORM);
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -119,6 +129,22 @@ const Contact = () => {
 
   return (
     <>
+      {/* ── SUCCESS TOAST ── */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-[200] flex items-start gap-3 bg-emerald-600 text-white px-5 py-4 rounded-2xl shadow-2xl shadow-emerald-900/30 max-w-sm animate-[slide-in-from-right_0.3s_ease]">
+          <FaCheckCircle className="flex-shrink-0 mt-0.5 text-emerald-200 text-lg" />
+          <div className="flex-1">
+            <p className="font-bold text-sm">Message Received!</p>
+            <p className="text-emerald-100 text-xs mt-0.5">
+              Thanks, <span className="font-semibold text-white">{toast}</span>. We'll contact you within 24 hours.
+            </p>
+          </div>
+          <button onClick={() => setToast(null)} className="p-1 hover:bg-emerald-500 rounded-lg transition flex-shrink-0">
+            <FaTimes className="text-xs text-emerald-200" />
+          </button>
+        </div>
+      )}
+
       {/* ── PAGE BANNER ── */}
       <section
         className="relative h-[60vh] bg-cover bg-center flex items-end pb-24"
@@ -171,80 +197,80 @@ const Contact = () => {
             </p>
             <h2 className="text-4xl font-black mb-8 text-slate-900">Tell Us About Your Case</h2>
 
-            {!submitted ? (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {error && (
-                  <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
-                    {error}
-                  </div>
-                )}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {error && (
+                <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
+                  {error}
+                </div>
+              )}
 
-                <div className="grid sm:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
-                      Full Name *
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={form.name}
+              <div className="grid sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={form.name}
+                    onChange={handleChange}
+                    placeholder="John Smith"
+                    required
+                    className="w-full bg-white border border-slate-300 focus:border-cyan-400 rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 placeholder-slate-400 transition shadow-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    placeholder="john@email.com"
+                    required
+                    className="w-full bg-white border border-slate-300 focus:border-cyan-400 rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 placeholder-slate-400 transition shadow-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                    Phone / WhatsApp
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={form.phone}
+                    onChange={handleChange}
+                    placeholder="+1 555 000 0000"
+                    className="w-full bg-white border border-slate-300 focus:border-cyan-400 rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 placeholder-slate-400 transition shadow-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                    Country
+                  </label>
+                  <div className="relative">
+                    <select
+                      name="country"
+                      value={form.country}
                       onChange={handleChange}
-                      placeholder="John Smith"
-                      required
-                      className="w-full bg-white border border-slate-300 focus:border-cyan-400 rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 placeholder-slate-400 transition shadow-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
-                      Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={form.email}
-                      onChange={handleChange}
-                      placeholder="john@email.com"
-                      required
-                      className="w-full bg-white border border-slate-300 focus:border-cyan-400 rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 placeholder-slate-400 transition shadow-sm"
-                    />
+                      className="w-full bg-white border border-slate-300 focus:border-cyan-400 rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 transition appearance-none cursor-pointer shadow-sm"
+                    >
+                      <option value="">Select your country</option>
+                      {COUNTRIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                    <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
                   </div>
                 </div>
+              </div>
 
-                <div className="grid sm:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
-                      Phone / WhatsApp
-                    </label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={form.phone}
-                      onChange={handleChange}
-                      placeholder="+1 555 000 0000"
-                      className="w-full bg-white border border-slate-300 focus:border-cyan-400 rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 placeholder-slate-400 transition shadow-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
-                      Country
-                    </label>
-                    <div className="relative">
-                      <select
-                        name="country"
-                        value={form.country}
-                        onChange={handleChange}
-                        className="w-full bg-white border border-slate-300 focus:border-cyan-400 rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 transition appearance-none cursor-pointer shadow-sm"
-                      >
-                        <option value="">Select your country</option>
-                        {COUNTRIES.map((c) => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
-                      <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
-                    </div>
-                  </div>
-                </div>
-
+              <div className="grid sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
                     Treatment Interest
@@ -264,57 +290,55 @@ const Contact = () => {
                     <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
-                    Tell Us More *
+                    Preferred Date
                   </label>
-                  <textarea
-                    name="message"
-                    value={form.message}
+                  <input
+                    type="date"
+                    name="preferredDate"
+                    value={form.preferredDate}
                     onChange={handleChange}
-                    rows={5}
-                    placeholder="Briefly describe your condition, diagnosis, or treatment needed. Any medical reports or prior history is helpful."
-                    required
-                    className="w-full bg-white border border-slate-300 focus:border-cyan-400 rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 placeholder-slate-400 resize-none transition shadow-sm"
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-full bg-white border border-slate-300 focus:border-cyan-400 rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 transition shadow-sm"
                   />
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="bg-cyan-500 hover:bg-cyan-400 disabled:opacity-70 text-white px-10 py-4 rounded-full font-bold text-sm flex items-center gap-2 transition-all hover:scale-105 hover:shadow-lg hover:shadow-cyan-400/25"
-                >
-                  {saving ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Sending…
-                    </>
-                  ) : (
-                    <>Send Message <FaArrowRight className="text-xs" /></>
-                  )}
-                </button>
-
-                <p className="text-slate-400 text-xs">
-                  * We typically respond within 24 hours. Your information is kept strictly confidential.
-                </p>
-              </form>
-            ) : (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-12 text-center">
-                <FaCheckCircle className="text-emerald-500 text-5xl mx-auto mb-6" />
-                <h3 className="text-2xl font-black mb-3 text-slate-900">Message Received!</h3>
-                <p className="text-slate-600 leading-relaxed max-w-sm mx-auto">
-                  Thank you, <span className="text-slate-900 font-semibold">{form.name || "there"}</span>. One of our
-                  coordinators will contact you within 24 hours to discuss your case.
-                </p>
-                <button
-                  onClick={() => { setForm(INITIAL_FORM); setSubmitted(false); }}
-                  className="mt-8 border border-slate-300 px-6 py-3 rounded-full text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
-                >
-                  Send Another Message
-                </button>
               </div>
-            )}
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                  Tell Us More *
+                </label>
+                <textarea
+                  name="message"
+                  value={form.message}
+                  onChange={handleChange}
+                  rows={5}
+                  placeholder="Briefly describe your condition, diagnosis, or treatment needed. Any medical reports or prior history is helpful."
+                  required
+                  className="w-full bg-white border border-slate-300 focus:border-cyan-400 rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 placeholder-slate-400 resize-none transition shadow-sm"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="bg-cyan-500 hover:bg-cyan-400 disabled:opacity-70 text-white px-10 py-4 rounded-full font-bold text-sm flex items-center gap-2 transition-all hover:scale-105 hover:shadow-lg hover:shadow-cyan-400/25"
+              >
+                {saving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Sending…
+                  </>
+                ) : (
+                  <>Send Message <FaArrowRight className="text-xs" /></>
+                )}
+              </button>
+
+              <p className="text-slate-400 text-xs">
+                * We typically respond within 24 hours. Your information is kept strictly confidential.
+              </p>
+            </form>
           </div>
 
           {/* Side Info */}

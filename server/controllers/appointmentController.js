@@ -13,23 +13,25 @@ const getAppointments = async (req, res) => {
 // POST /api/appointments  (public — consultation form)
 const createAppointment = async (req, res) => {
   try {
-    const { fullName, email, phone, country, service, message } = req.body;
-    if (!fullName || !email || !message) {
-      return res.status(400).json({ message: 'fullName, email, and message are required' });
+    const { fullName, email, phone, country, service, preferredDate, message } = req.body;
+    if (!fullName?.trim() || !email?.trim()) {
+      return res.status(400).json({ message: 'Full name and email are required' });
     }
-    const appointment = await Appointment.create({ fullName, email, phone, country, service, message });
+    const appointment = await Appointment.create({
+      fullName, email, phone, country, service, preferredDate, message,
+    });
     res.status(201).json(appointment);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 };
 
-// PATCH /api/appointments/:id  (protected — status update only)
+// PATCH /api/appointments/:id  (protected — status update)
 const updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    if (!['pending', 'approved', 'rejected'].includes(status)) {
-      return res.status(400).json({ message: 'status must be pending, approved, or rejected' });
+    if (!['pending', 'confirmed', 'completed'].includes(status)) {
+      return res.status(400).json({ message: 'status must be pending, confirmed, or completed' });
     }
     const appointment = await Appointment.findByIdAndUpdate(
       req.params.id,
