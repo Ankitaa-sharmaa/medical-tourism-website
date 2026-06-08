@@ -3,11 +3,14 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   const uri = process.env.MONGODB_URI;
   if (!uri) {
-    throw new Error('MONGODB_URI is not defined in .env');
+    throw new Error(
+      'MONGODB_URI is not set. ' +
+      'Add it in Render → Environment → MONGODB_URI'
+    );
   }
-
-  await mongoose.connect(uri);
-  console.log('MongoDB connected');
+  await mongoose.connect(uri, {
+    serverSelectionTimeoutMS: 10000, // fail fast if Atlas is unreachable
+  });
 };
 
 module.exports = connectDB;
