@@ -1,7 +1,9 @@
 const jwt = require('jsonwebtoken');
 
-const ADMIN_EMAIL    = 'ankita.dev.work@gmail.com';
-const ADMIN_PASSWORD = '123456';
+// Read from Vercel env vars; fall back to defaults so dev still works.
+// Trim both values to handle accidental leading/trailing spaces.
+const ADMIN_EMAIL    = (process.env.ADMIN_EMAIL    || 'ankita.dev.work@gmail.com').trim().toLowerCase();
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '123456').trim();
 
 // POST /api/auth/login
 const login = (req, res) => {
@@ -13,7 +15,7 @@ const login = (req, res) => {
 
   if (
     email.trim().toLowerCase() === ADMIN_EMAIL &&
-    password === ADMIN_PASSWORD
+    password.trim() === ADMIN_PASSWORD
   ) {
     const token = jwt.sign(
       { email: ADMIN_EMAIL, role: 'admin' },
