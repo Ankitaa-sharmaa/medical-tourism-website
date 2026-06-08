@@ -2,8 +2,7 @@ services:
   - type: web
     name: medtour-api
     runtime: node
-    rootDir: server
-    buildCommand: npm install
+    buildCommand: npm install --prefix server
     startCommand: node server.js
     envVars:
       - key: NODE_ENV
