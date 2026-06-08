@@ -31,9 +31,16 @@ app.use('/api/doctors',      require('./routes/doctorRoutes'));
 app.use('/api/appointments', require('./routes/appointmentRoutes'));
 app.use('/api/services',     require('./routes/serviceRoutes'));
 
-app.get('/api/health', (_req, res) =>
-  res.json({ ok: true, mongoState: mongoose.connection.readyState, time: new Date() })
-);
+app.get('/api/health', (_req, res) => {
+  const state = mongoose.connection.readyState;
+  res.json({
+    ok:            true,
+    mongoConnected: state === 1,
+    mongoState:    state,          // 0=disconnected 1=connected 2=connecting
+    mongoUriSet:   !!process.env.MONGODB_URI,
+    time:          new Date(),
+  });
+});
 
 app.use((_req, res) => res.status(404).json({ message: 'Route not found' }));
 app.use((err, _req, res, _next) =>

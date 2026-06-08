@@ -5,7 +5,7 @@ const connectDB = async () => {
   if (!uri) {
     throw new Error(
       'MONGODB_URI is not set. ' +
-      'Add it in Render → Environment → MONGODB_URI'
+      'Add it in Vercel → Project Settings → Environment Variables → MONGODB_URI'
     );
   }
   await mongoose.connect(uri, {
