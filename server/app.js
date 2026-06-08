@@ -26,18 +26,6 @@ app.use(cors({
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Temporary diagnostic — shows if nested routing reaches Express and what creds are loaded
-app.get('/api/auth/debug', (_req, res) => {
-  res.json({
-    routingOk:          true,
-    adminEmailSource:   process.env.ADMIN_EMAIL    ? 'env_var' : 'hardcoded_default',
-    adminEmail:         (process.env.ADMIN_EMAIL   || 'ankita.dev.work@gmail.com').trim().toLowerCase(),
-    passwordSource:     process.env.ADMIN_PASSWORD ? 'env_var' : 'hardcoded_default',
-    passwordLength:     (process.env.ADMIN_PASSWORD || '123456').trim().length,
-    jwtSecretSet:       !!process.env.JWT_SECRET,
-  });
-});
-
 app.use('/api/auth',         require('./routes/authRoutes'));
 app.use('/api/doctors',      require('./routes/doctorRoutes'));
 app.use('/api/appointments', require('./routes/appointmentRoutes'));
