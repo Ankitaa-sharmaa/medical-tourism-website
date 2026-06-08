@@ -1,19 +1,21 @@
-// Catch-all Vercel serverless function for all /api/* routes.
-// Vercel routes /api/:path* here natively — no rewrites needed.
-// req.url is the full original path (e.g. /api/appointments), so Express routing works.
+// Catch-all Vercel serverless — handles all /api/* routes.
+// req.url is the full original path so Express routing works correctly.
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 
 const require = createRequire(fileURLToPath(import.meta.url));
-
 const connectDB = require('../server/config/db');
 const app       = require('../server/app');
 
-let dbPromise = null;
+let dbPromise   = null;
+let lastDbError = null;
+
 const getDB = () => {
   if (!dbPromise) {
+    lastDbError = null;
     dbPromise = connectDB().catch(err => {
-      dbPromise = null;
+      lastDbError = err;
+      dbPromise   = null; // allow retry on next request
       throw err;
     });
   }
@@ -23,15 +25,30 @@ const getDB = () => {
 export default async function handler(req, res) {
   try {
     await getDB();
+    lastDbError = null;
   } catch (err) {
-    console.error('[Vercel] MongoDB connection failed:', err.message);
-    if (!req.url?.includes('/health')) {
-      return res.status(503).json({
-        error: 'Database unavailable.',
-        fix:   'Add MONGODB_URI in Vercel → Project Settings → Environment Variables.',
-        detail: err.message,
+    console.error('[Vercel] MongoDB error:', err.message);
+
+    // Health endpoint always responds — shows exactly what failed
+    if (req.url?.includes('/health')) {
+      const mongoose = require('mongoose');
+      return res.json({
+        ok:             true,
+        mongoConnected: false,
+        mongoState:     mongoose.connection.readyState,
+        mongoUriSet:    !!process.env.MONGODB_URI,
+        error:          err.message,
+        fix:            'In MongoDB Atlas → Network Access → add IP 0.0.0.0/0 (Allow from anywhere)',
+        time:           new Date(),
       });
     }
+
+    return res.status(503).json({
+      error:  'Database unavailable',
+      detail: err.message,
+      fix:    'Atlas Network Access → add 0.0.0.0/0 to the IP whitelist',
+    });
   }
+
   return app(req, res);
 }

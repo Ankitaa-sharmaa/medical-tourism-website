@@ -9,7 +9,8 @@ const connectDB = async () => {
     );
   }
   await mongoose.connect(uri, {
-    serverSelectionTimeoutMS: 10000, // fail fast if Atlas is unreachable
+    serverSelectionTimeoutMS: 5000,  // fail in 5s — leaves time for Vercel to return error
+    connectTimeoutMS:         5000,
   });
 };
 
