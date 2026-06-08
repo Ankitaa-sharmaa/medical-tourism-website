@@ -1,11 +1,8 @@
-require('dotenv').config();
-
-// NOTE: dns.setServers() was removed — it was a local-ISP workaround that
-// breaks DNS inside Render/Railway containers. Atlas SRV resolves fine there.
+const path      = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const express   = require('express');
 const cors      = require('cors');
-const path      = require('path');
 const mongoose  = require('mongoose');
 const connectDB = require('./config/db');
 
