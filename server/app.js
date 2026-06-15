@@ -24,7 +24,9 @@ app.use(cors({
 }));
 
 app.use(express.json());
+// Serve uploads from local dir (dev) and /tmp/uploads (Vercel serverless)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static('/tmp/uploads'));
 
 app.use('/api/auth',         require('./routes/authRoutes'));
 app.use('/api/doctors',      require('./routes/doctorRoutes'));

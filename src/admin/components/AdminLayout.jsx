@@ -118,22 +118,22 @@ const AdminLayout = ({ children, title }) => {
 
         {/* Top Header */}
         <header className="sticky top-0 z-20 bg-white border-b border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between px-5 py-4">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <button
-                className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition"
+                className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition flex-shrink-0"
                 onClick={() => setOpen(!open)}
               >
                 {open ? <FaTimes /> : <FaBars />}
               </button>
-              <h1 className="text-lg font-bold text-slate-900">{title}</h1>
+              <h1 className="text-base sm:text-lg font-bold text-slate-900 truncate">{title}</h1>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               <div className="hidden sm:flex items-center gap-2 text-sm text-slate-500">
                 <div className="w-2 h-2 rounded-full bg-emerald-400" />
                 Live
               </div>
-              <div className="w-9 h-9 rounded-full bg-cyan-100 flex items-center justify-center text-cyan-700 font-bold text-sm uppercase">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-cyan-100 flex items-center justify-center text-cyan-700 font-bold text-xs sm:text-sm uppercase flex-shrink-0">
                 {user?.email?.[0] ?? 'A'}
               </div>
             </div>
@@ -141,7 +141,7 @@ const AdminLayout = ({ children, title }) => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-5 md:p-8 overflow-auto">
+        <main className="flex-1 p-3 sm:p-5 md:p-8 overflow-auto">
           {children}
         </main>
 

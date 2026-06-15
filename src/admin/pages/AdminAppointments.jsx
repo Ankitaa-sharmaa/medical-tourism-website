@@ -208,13 +208,13 @@ const AdminAppointments = () => {
 
       {/* ── Add Modal ── */}
       {modal==='add' && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg my-8">
-            <div className="flex items-center justify-between px-7 py-5 border-b border-slate-200">
-              <h2 className="text-xl font-black text-slate-900">New Appointment</h2>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-start justify-center p-0 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-lg sm:my-8 max-h-[95vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 sm:px-7 py-4 sm:py-5 border-b border-slate-200 flex-shrink-0">
+              <h2 className="text-lg sm:text-xl font-black text-slate-900">New Appointment</h2>
               <button onClick={()=>setModal(null)} className="p-2 hover:bg-slate-100 rounded-xl"><FaTimes className="text-slate-500"/></button>
             </div>
-            <form onSubmit={handleAdd} className="px-7 py-6 space-y-4">
+            <form onSubmit={handleAdd} className="px-5 sm:px-7 py-5 sm:py-6 space-y-4 overflow-y-auto flex-1">
               {[['Full Name *','fullName','text','John Smith',true],['Email *','email','email','john@email.com',true],['Phone','phone','tel','+1 555 000 0000',false]].map(([lb,k,type,ph,req])=>(
                 <div key={k}>
                   <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">{lb}</label>
@@ -257,16 +257,19 @@ const AdminAppointments = () => {
 
       {/* ── View Modal ── */}
       {modal==='view' && selected && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between px-7 py-5 border-b border-slate-200">
-              <h2 className="text-xl font-black text-slate-900">Appointment Details</h2>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-md max-h-[92vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 sm:px-7 py-4 sm:py-5 border-b border-slate-200 flex-shrink-0">
+              <h2 className="text-lg sm:text-xl font-black text-slate-900">Appointment Details</h2>
               <button onClick={()=>setModal(null)} className="p-2 hover:bg-slate-100 rounded-xl"><FaTimes className="text-slate-500"/></button>
             </div>
-            <div className="px-7 py-6 space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-lg uppercase">{(selected.fullName||'?')[0].toUpperCase()}</div>
-                <div><p className="font-bold text-slate-900 text-lg">{selected.fullName}</p><p className="text-slate-500 text-sm">{selected.email}</p></div>
+            <div className="px-5 sm:px-7 py-5 sm:py-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-base sm:text-lg uppercase flex-shrink-0">{(selected.fullName||'?')[0].toUpperCase()}</div>
+                <div className="min-w-0">
+                  <p className="font-bold text-slate-900 text-base sm:text-lg truncate">{selected.fullName}</p>
+                  <p className="text-slate-500 text-sm truncate">{selected.email}</p>
+                </div>
               </div>
               {[
                 ['Phone',     selected.phone        || '—'],
@@ -276,21 +279,21 @@ const AdminAppointments = () => {
                 ['Submitted', formatDate(selected.createdAt)],
                 ['Message',   selected.message      || '—'],
               ].map(([lb,val])=>(
-                <div key={lb} className="flex justify-between items-start gap-4">
+                <div key={lb} className="flex items-start gap-3">
                   <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-0.5 w-20 flex-shrink-0">{lb}</span>
-                  <span className="text-sm text-slate-700 text-right">{val}</span>
+                  <span className="text-sm text-slate-700 break-words min-w-0 flex-1">{val}</span>
                 </div>
               ))}
-              <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100">
                 <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${STATUS_STYLE[selected.status]??STATUS_STYLE.pending}`}>{selected.status??'pending'}</span>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {selected.status==='pending'&&(
-                    <button onClick={()=>updateStatus(selected._id,'confirmed')} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-bold transition">Confirm</button>
+                    <button onClick={()=>updateStatus(selected._id,'confirmed')} className="px-3 sm:px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-bold transition">Confirm</button>
                   )}
                   {selected.status==='confirmed'&&(
-                    <button onClick={()=>updateStatus(selected._id,'completed')} className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-xs font-bold transition">Complete</button>
+                    <button onClick={()=>updateStatus(selected._id,'completed')} className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-xs font-bold transition">Complete</button>
                   )}
-                  <button onClick={()=>handleDelete(selected._id,selected.fullName)} className="px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-xl text-xs font-bold transition">Delete</button>
+                  <button onClick={()=>handleDelete(selected._id,selected.fullName)} className="px-3 sm:px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-xl text-xs font-bold transition">Delete</button>
                 </div>
               </div>
             </div>

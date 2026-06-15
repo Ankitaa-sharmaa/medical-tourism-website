@@ -86,13 +86,17 @@ const INITIAL_FORM = {
 };
 
 const PHONE_RE = /^\d{10}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const Contact = () => {
-  const [form,       setForm]       = useState(INITIAL_FORM);
-  const [phoneError, setPhoneError] = useState("");
-  const [saving,     setSaving]     = useState(false);
-  const [error,      setError]      = useState("");
-  const [toast,      setToast]      = useState(null);
+  const [form,         setForm]         = useState(INITIAL_FORM);
+  const [phoneError,   setPhoneError]   = useState("");
+  const [emailError,   setEmailError]   = useState("");
+  const [serviceError, setServiceError] = useState("");
+  const [dateError,    setDateError]    = useState("");
+  const [saving,       setSaving]       = useState(false);
+  const [error,        setError]        = useState("");
+  const [toast,        setToast]        = useState(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -105,20 +109,42 @@ const Contact = () => {
     if (name === "phone") {
       const digits = value.replace(/\D/g, "").slice(0, 10);
       setForm({ ...form, phone: digits });
-      setPhoneError(digits.length > 0 && digits.length < 10
-        ? "Please enter a valid 10-digit phone number"
-        : "");
+      setPhoneError(
+        digits.length === 0 ? "Please enter a valid 10-digit phone number" :
+        digits.length < 10  ? "Please enter a valid 10-digit phone number" : ""
+      );
       return;
     }
+    if (name === "email") {
+      setEmailError(value && !EMAIL_RE.test(value) ? "Please enter a valid email address" : "");
+    }
+    if (name === "service") setServiceError(value ? "" : "Please select a treatment specialty");
+    if (name === "preferredDate") setDateError(value ? "" : "Please select a preferred date");
     setForm({ ...form, [name]: value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    let hasError = false;
+
     if (!PHONE_RE.test(form.phone)) {
       setPhoneError("Please enter a valid 10-digit phone number");
-      return;
+      hasError = true;
     }
+    if (!form.email.trim() || !EMAIL_RE.test(form.email.trim())) {
+      setEmailError("Please enter a valid email address");
+      hasError = true;
+    }
+    if (!form.service) {
+      setServiceError("Please select a treatment specialty");
+      hasError = true;
+    }
+    if (!form.preferredDate) {
+      setDateError("Please select a preferred date");
+      hasError = true;
+    }
+    if (hasError) return;
+
     setSaving(true);
     setError("");
     try {
@@ -133,6 +159,7 @@ const Contact = () => {
       });
       setToast(form.name.trim() || "there");
       setForm(INITIAL_FORM);
+      setPhoneError(""); setEmailError(""); setServiceError(""); setDateError("");
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -246,8 +273,11 @@ const Contact = () => {
                     onChange={handleChange}
                     placeholder="john@email.com"
                     required
-                    className="w-full bg-white border border-slate-300 focus:border-cyan-400 rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 placeholder-slate-400 transition shadow-sm"
+                    className={`w-full bg-white border rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 placeholder-slate-400 transition shadow-sm ${
+                      emailError ? "border-red-400 focus:border-red-400" : "border-slate-300 focus:border-cyan-400"
+                    }`}
                   />
+                  {emailError && <p className="text-red-500 text-xs mt-1.5">{emailError}</p>}
                 </div>
               </div>
 
@@ -299,14 +329,17 @@ const Contact = () => {
               <div className="grid sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
-                    Treatment Interest
+                    Treatment Interest *
                   </label>
                   <div className="relative">
                     <select
                       name="service"
                       value={form.service}
                       onChange={handleChange}
-                      className="w-full bg-white border border-slate-300 focus:border-cyan-400 rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 transition appearance-none cursor-pointer shadow-sm"
+                      required
+                      className={`w-full bg-white border rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 transition appearance-none cursor-pointer shadow-sm ${
+                        serviceError ? "border-red-400 focus:border-red-400" : "border-slate-300 focus:border-cyan-400"
+                      }`}
                     >
                       <option value="">Select a specialty</option>
                       {SERVICES_LIST.map((s) => (
@@ -315,10 +348,11 @@ const Contact = () => {
                     </select>
                     <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
                   </div>
+                  {serviceError && <p className="text-red-500 text-xs mt-1.5">{serviceError}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
-                    Preferred Date
+                    Preferred Date *
                   </label>
                   <input
                     type="date"
@@ -326,8 +360,12 @@ const Contact = () => {
                     value={form.preferredDate}
                     onChange={handleChange}
                     min={new Date().toISOString().split("T")[0]}
-                    className="w-full bg-white border border-slate-300 focus:border-cyan-400 rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 transition shadow-sm"
+                    required
+                    className={`w-full bg-white border rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 transition shadow-sm ${
+                      dateError ? "border-red-400 focus:border-red-400" : "border-slate-300 focus:border-cyan-400"
+                    }`}
                   />
+                  {dateError && <p className="text-red-500 text-xs mt-1.5">{dateError}</p>}
                 </div>
               </div>
 
