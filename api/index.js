@@ -4,6 +4,7 @@ import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 
 const require = createRequire(fileURLToPath(import.meta.url));
+const mongoose  = require('mongoose');
 const connectDB = require('../server/config/db');
 const app       = require('../server/app');
 
@@ -11,6 +12,14 @@ let dbPromise   = null;
 let lastDbError = null;
 
 const getDB = () => {
+  // If Atlas dropped the idle connection, reset so we reconnect instead of
+  // buffering for 10 s and then timing out with "insertOne() buffering timed out".
+  if (dbPromise) {
+    const state = mongoose.connection.readyState; // 0=disconnected 3=disconnecting
+    if (state === 0 || state === 3) {
+      dbPromise = null;
+    }
+  }
   if (!dbPromise) {
     lastDbError = null;
     dbPromise = connectDB().catch(err => {
