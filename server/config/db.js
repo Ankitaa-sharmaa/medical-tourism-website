@@ -8,7 +8,6 @@ const connectDB = async () => {
       'Add it in Vercel → Project Settings → Environment Variables → MONGODB_URI'
     );
   }
-  mongoose.set('bufferCommands', false); // throw immediately if disconnected, don't buffer
   await mongoose.connect(uri, {
     serverSelectionTimeoutMS: 10000,
     connectTimeoutMS:         10000,
