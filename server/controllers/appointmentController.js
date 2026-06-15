@@ -17,8 +17,11 @@ const createAppointment = async (req, res) => {
     if (!fullName?.trim() || !email?.trim()) {
       return res.status(400).json({ message: 'Full name and email are required' });
     }
+    if (!phone || !/^\d{10}$/.test(phone.trim())) {
+      return res.status(400).json({ message: 'Please enter a valid 10-digit phone number' });
+    }
     const appointment = await Appointment.create({
-      fullName, email, phone, country, service, preferredDate, message,
+      fullName, email, phone: phone.trim(), country, service, preferredDate, message,
     });
     res.status(201).json(appointment);
   } catch (err) {

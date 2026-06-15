@@ -85,11 +85,14 @@ const INITIAL_FORM = {
   message: "",
 };
 
+const PHONE_RE = /^\d{10}$/;
+
 const Contact = () => {
-  const [form,    setForm]    = useState(INITIAL_FORM);
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState("");
-  const [toast,   setToast]   = useState(null);
+  const [form,       setForm]       = useState(INITIAL_FORM);
+  const [phoneError, setPhoneError] = useState("");
+  const [saving,     setSaving]     = useState(false);
+  const [error,      setError]      = useState("");
+  const [toast,      setToast]      = useState(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -98,11 +101,24 @@ const Contact = () => {
   }, [toast]);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === "phone") {
+      const digits = value.replace(/\D/g, "").slice(0, 10);
+      setForm({ ...form, phone: digits });
+      setPhoneError(digits.length > 0 && digits.length < 10
+        ? "Please enter a valid 10-digit phone number"
+        : "");
+      return;
+    }
+    setForm({ ...form, [name]: value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!PHONE_RE.test(form.phone)) {
+      setPhoneError("Please enter a valid 10-digit phone number");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -238,16 +254,26 @@ const Contact = () => {
               <div className="grid sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
-                    Phone / WhatsApp
+                    Phone / WhatsApp *
                   </label>
                   <input
                     type="tel"
                     name="phone"
                     value={form.phone}
                     onChange={handleChange}
-                    placeholder="+1 555 000 0000"
-                    className="w-full bg-white border border-slate-300 focus:border-cyan-400 rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 placeholder-slate-400 transition shadow-sm"
+                    placeholder="10-digit number"
+                    inputMode="numeric"
+                    maxLength={10}
+                    required
+                    className={`w-full bg-white border rounded-xl px-5 py-3.5 outline-none text-sm text-slate-900 placeholder-slate-400 transition shadow-sm ${
+                      phoneError
+                        ? "border-red-400 focus:border-red-400"
+                        : "border-slate-300 focus:border-cyan-400"
+                    }`}
                   />
+                  {phoneError && (
+                    <p className="text-red-500 text-xs mt-1.5">{phoneError}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
