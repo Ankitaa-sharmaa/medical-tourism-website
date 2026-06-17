@@ -1,6 +1,15 @@
-const path     = require('path');
+const path = require('path');
+const fs   = require('fs');
+
+const envPath = path.join(__dirname, '.env');
+const envExists = fs.existsSync(envPath);
 // override:true ensures server/.env always wins over any corrupted Vercel env var
-require('dotenv').config({ path: path.join(__dirname, '.env'), override: true });
+const dotenvResult = require('dotenv').config({ path: envPath, override: true });
+
+// Startup diagnostics — visible in Vercel function logs
+console.log('[DIAG] envFile:', envPath, '| exists:', envExists, '| dotenvError:', dotenvResult.error?.message ?? 'none');
+const _u = process.env.MONGODB_URI || '';
+console.log('[DIAG] MONGODB_URI len:', _u.length, '| start:', _u.slice(0, 20), '| end:', _u.slice(-10));
 
 const express  = require('express');
 const cors     = require('cors');
