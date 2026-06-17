@@ -14,11 +14,15 @@ const getAppointments = async (req, res) => {
 const createAppointment = async (req, res) => {
   try {
     const { fullName, email, phone, country, service, preferredDate, message } = req.body;
-    if (!fullName?.trim() || !email?.trim()) {
-      return res.status(400).json({ message: 'Full name and email are required' });
+    if (!fullName?.trim()) {
+      return res.status(400).json({ message: 'Full name is required.' });
+    }
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email?.trim() || !EMAIL_RE.test(email.trim())) {
+      return res.status(400).json({ message: 'Please enter a valid email address.' });
     }
     if (!phone || !/^\d{10}$/.test(phone.trim())) {
-      return res.status(400).json({ message: 'Please enter a valid 10-digit phone number' });
+      return res.status(400).json({ message: 'Please enter a valid phone number.' });
     }
     const appointment = await Appointment.create({
       fullName, email, phone: phone.trim(), country, service, preferredDate, message,

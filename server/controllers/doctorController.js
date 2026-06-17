@@ -50,10 +50,13 @@ const deleteDoctor = async (req, res) => {
 };
 
 // POST /api/doctors/upload  (protected)
+// Converts the uploaded buffer to a base64 data URL so the image persists in
+// MongoDB rather than relying on Vercel's ephemeral /tmp filesystem.
 const uploadImage = (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
-    res.json({ url: `/uploads/${req.file.filename}` });
+    const b64 = req.file.buffer.toString('base64');
+    res.json({ url: `data:${req.file.mimetype};base64,${b64}` });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

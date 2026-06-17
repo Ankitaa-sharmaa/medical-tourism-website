@@ -104,16 +104,16 @@ const Contact = () => {
       const digits = value.replace(/\D/g, "").slice(0, 10);
       setForm({ ...form, phone: digits });
       setPhoneError(
-        digits.length === 0 ? "Please enter a valid 10-digit phone number" :
-        digits.length < 10  ? "Please enter a valid 10-digit phone number" : ""
+        digits.length === 0 ? "Please enter a valid phone number." :
+        digits.length < 10  ? "Please enter a valid phone number." : ""
       );
       return;
     }
     if (name === "email") {
-      setEmailError(value && !EMAIL_RE.test(value) ? "Please enter a valid email address" : "");
+      setEmailError(value && !EMAIL_RE.test(value) ? "Please enter a valid email address." : "");
     }
-    if (name === "service") setServiceError(value ? "" : "Please select a treatment specialty");
-    if (name === "preferredDate") setDateError(value ? "" : "Please select a preferred date");
+    if (name === "service") setServiceError(value ? "" : "Please select a treatment specialty.");
+    if (name === "preferredDate") setDateError(value ? "" : "Please select a preferred consultation date.");
     setForm({ ...form, [name]: value });
   };
 
@@ -122,19 +122,19 @@ const Contact = () => {
     let hasError = false;
 
     if (!PHONE_RE.test(form.phone)) {
-      setPhoneError("Please enter a valid 10-digit phone number");
+      setPhoneError("Please enter a valid phone number.");
       hasError = true;
     }
     if (!form.email.trim() || !EMAIL_RE.test(form.email.trim())) {
-      setEmailError("Please enter a valid email address");
+      setEmailError("Please enter a valid email address.");
       hasError = true;
     }
     if (!form.service) {
-      setServiceError("Please select a treatment specialty");
+      setServiceError("Please select a treatment specialty.");
       hasError = true;
     }
     if (!form.preferredDate) {
-      setDateError("Please select a preferred date");
+      setDateError("Please select a preferred consultation date.");
       hasError = true;
     }
     if (hasError) return;

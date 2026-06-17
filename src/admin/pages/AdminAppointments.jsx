@@ -275,7 +275,7 @@ const AdminAppointments = () => {
                 ['Phone',     selected.phone        || '—'],
                 ['Country',   selected.country      || '—'],
                 ['Service',   selected.service      || '—'],
-                ['Preferred', selected.preferredDate|| '—'],
+                ['Preferred Date', selected.preferredDate|| '—'],
                 ['Submitted', formatDate(selected.createdAt)],
                 ['Message',   selected.message      || '—'],
               ].map(([lb,val])=>(

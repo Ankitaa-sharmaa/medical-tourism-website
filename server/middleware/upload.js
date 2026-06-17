@@ -1,23 +1,4 @@
 const multer = require('multer');
-const path   = require('path');
-const fs     = require('fs');
-
-// Use /tmp on read-only file systems (Vercel), local uploads/ otherwise
-let uploadDir = path.join(__dirname, '..', 'uploads');
-try {
-  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-} catch {
-  uploadDir = '/tmp/uploads';
-  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename:    (_req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
-    cb(null, `${uniqueSuffix}${path.extname(file.originalname).toLowerCase()}`);
-  },
-});
 
 const fileFilter = (_req, file, cb) => {
   const allowedExts  = /\.(jpeg|jpg|png|webp)$/i;
@@ -29,8 +10,10 @@ const fileFilter = (_req, file, cb) => {
   }
 };
 
+// Memory storage — converts to base64 in controller so images persist in MongoDB
+// instead of the ephemeral /tmp filesystem on Vercel.
 module.exports = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB → ~2.7 MB as base64
 });

@@ -31,9 +31,7 @@ api.interceptors.response.use(
 // Absolute URLs (Unsplash etc.) are passed through unchanged.
 export const mediaUrl = (src) => {
   if (!src) return '';
-  if (src.startsWith('http')) return src;
-  // In dev, Vite proxies /uploads → Express.
-  // In production set VITE_API_URL=https://your-api-domain.com
+  if (src.startsWith('http') || src.startsWith('data:')) return src;
   const base = import.meta.env.VITE_API_URL || '';
   return `${base}${src}`;
 };

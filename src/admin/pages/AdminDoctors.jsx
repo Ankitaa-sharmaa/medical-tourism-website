@@ -74,7 +74,7 @@ const ImageZone = ({ preview, onFile, onUrl, urlVal, progress, uploading }) => {
               <FaImage className="text-slate-400 text-lg" />
             </div>
             <p className="text-sm font-semibold text-slate-600">Click to upload photo</p>
-            <p className="text-xs text-slate-400">PNG, JPG, WEBP up to 5 MB</p>
+            <p className="text-xs text-slate-400">PNG, JPG, WEBP up to 2 MB</p>
           </div>
         )}
 
@@ -157,7 +157,7 @@ const AdminDoctors = () => {
   // ── File select ───────────────────────────────────────────
   const handleFile = file => {
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { toast('error', 'Image is too large (max 5 MB).'); return; }
+    if (file.size > 2 * 1024 * 1024) { toast('error', 'Image is too large (max 2 MB).'); return; }
     setImgFile(file);
     setImgPreview(URL.createObjectURL(file));
     setForm(p => ({ ...p, image: '' }));
