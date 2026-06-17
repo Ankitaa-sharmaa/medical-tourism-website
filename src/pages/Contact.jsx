@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api";
 import {
@@ -95,14 +95,8 @@ const Contact = () => {
   const [serviceError, setServiceError] = useState("");
   const [dateError,    setDateError]    = useState("");
   const [saving,       setSaving]       = useState(false);
+  const [success,      setSuccess]      = useState(false);
   const [error,        setError]        = useState("");
-  const [toast,        setToast]        = useState(null);
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 5000);
-    return () => clearTimeout(t);
-  }, [toast]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -147,6 +141,7 @@ const Contact = () => {
 
     setSaving(true);
     setError("");
+    setSuccess(false);
     try {
       await api.post("/appointments", {
         fullName:      form.name.trim(),
@@ -157,14 +152,11 @@ const Contact = () => {
         preferredDate: form.preferredDate,
         message:       form.message.trim(),
       });
-      setToast(form.name.trim() || "there");
+      setSuccess(true);
       setForm(INITIAL_FORM);
       setPhoneError(""); setEmailError(""); setServiceError(""); setDateError("");
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-        "Something went wrong. Please try again or contact us directly."
-      );
+    } catch {
+      setError("Failed to book consultation. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -172,21 +164,6 @@ const Contact = () => {
 
   return (
     <>
-      {/* ── SUCCESS TOAST ── */}
-      {toast && (
-        <div className="fixed top-6 right-6 z-[200] flex items-start gap-3 bg-emerald-600 text-white px-5 py-4 rounded-2xl shadow-2xl shadow-emerald-900/30 max-w-sm animate-[slide-in-from-right_0.3s_ease]">
-          <FaCheckCircle className="flex-shrink-0 mt-0.5 text-emerald-200 text-lg" />
-          <div className="flex-1">
-            <p className="font-bold text-sm">Message Received!</p>
-            <p className="text-emerald-100 text-xs mt-0.5">
-              Thanks, <span className="font-semibold text-white">{toast}</span>. We'll contact you within 24 hours.
-            </p>
-          </div>
-          <button onClick={() => setToast(null)} className="p-1 hover:bg-emerald-500 rounded-lg transition flex-shrink-0">
-            <FaTimes className="text-xs text-emerald-200" />
-          </button>
-        </div>
-      )}
 
       {/* ── PAGE BANNER ── */}
       <section
@@ -241,9 +218,16 @@ const Contact = () => {
             <h2 className="text-4xl font-black mb-8 text-slate-900">Tell Us About Your Case</h2>
 
             <form onSubmit={handleSubmit} className="space-y-5">
+              {success && (
+                <div className="flex items-start gap-3 px-5 py-4 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl text-sm" role="status">
+                  <FaCheckCircle className="flex-shrink-0 mt-0.5 text-emerald-500 text-lg" />
+                  <p className="font-medium">Consultation booked successfully. Our team will contact you shortly.</p>
+                </div>
+              )}
               {error && (
-                <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
-                  {error}
+                <div className="flex items-start gap-3 px-5 py-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm" role="alert">
+                  <FaTimes className="flex-shrink-0 mt-0.5 text-red-500 text-base" />
+                  <p className="font-medium">{error}</p>
                 </div>
               )}
 
@@ -392,10 +376,10 @@ const Contact = () => {
                 {saving ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Sending…
+                    Booking Consultation...
                   </>
                 ) : (
-                  <>Send Message <FaArrowRight className="text-xs" /></>
+                  <>Book Free Consultation <FaArrowRight className="text-xs" /></>
                 )}
               </button>
 
