@@ -72,13 +72,16 @@ export default async function handler(req, res) {
 
     // Health endpoint always responds so we can diagnose connection problems
     if (req.url?.includes('/health')) {
+      const uri = process.env.MONGODB_URI || '';
       return res.json({
         ok:             true,
         mongoConnected: false,
         mongoState:     mongoose.connection.readyState,
-        mongoUriSet:    !!process.env.MONGODB_URI,
+        mongoUriSet:    !!uri,
+        mongoUriLen:    uri.length,
+        mongoUriStart:  uri.slice(0, 20),  // reveals prefix without full creds
+        mongoUriEnd:    uri.slice(-10),    // reveals suffix to check for garbage
         error:          err.message,
-        fix:            'MongoDB Atlas → Network Access → add 0.0.0.0/0',
         time:           new Date(),
       });
     }
