@@ -36,12 +36,16 @@ app.use('/api/services',     require('./routes/serviceRoutes'));
 
 app.get('/api/health', (_req, res) => {
   const state = mongoose.connection.readyState;
+  const uri   = process.env.MONGODB_URI || '';
   res.json({
-    ok:            true,
+    ok:             true,
     mongoConnected: state === 1,
-    mongoState:    state,          // 0=disconnected 1=connected 2=connecting
-    mongoUriSet:   !!process.env.MONGODB_URI,
-    time:          new Date(),
+    mongoState:     state,
+    mongoUriSet:    !!uri,
+    mongoUriValid:  uri.startsWith('mongodb+srv://') || uri.startsWith('mongodb://'),
+    mongoUriLen:    uri.length,
+    mongoUriTail:   uri.slice(-6),  // last 6 chars — reveals trailing garbage without exposing creds
+    time:           new Date(),
   });
 });
 
